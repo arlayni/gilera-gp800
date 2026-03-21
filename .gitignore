@@ -1,0 +1,19 @@
+# Sensitive data
+my-bike/immobilizer-keys/
+*.key
+*.pin
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Python (for CLI tool later)
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+
+# Temp files
+*.tmp
+*.bak
