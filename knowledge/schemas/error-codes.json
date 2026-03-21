@@ -1,0 +1,25 @@
+{
+  "description": "IAW 5AM Diagnostic Trouble Codes — partial list, expand from IAW5xReader output",
+  "version": "1.0.0",
+  "reading_method": "MIL blink code: key ON, within 3s fully open/close throttle 3 times. Long flash = tens, short = units.",
+  "codes": {
+    "11": { "description": "ECT sensor open/short", "system": "cooling", "severity": "high", "symptoms": ["rich running", "no fan activation", "wrong cold-start enrichment"] },
+    "12": { "description": "IAT sensor open/short", "system": "intake", "severity": "high", "symptoms": ["rich running if open circuit (ECU sees -40C)"] },
+    "13": { "description": "MAP sensor out of range", "system": "intake", "severity": "high", "symptoms": ["wrong fueling at all RPM/load points"] },
+    "14": { "description": "TPS out of range / implausible", "system": "throttle", "severity": "critical", "symptoms": ["erratic idle", "unpredictable fueling"] },
+    "15": { "description": "Battery voltage out of range", "system": "electrical", "severity": "medium", "symptoms": ["injector dead-time errors", "weak spark"] },
+    "21": { "description": "O2 sensor no activity / heater circuit", "system": "exhaust", "severity": "medium", "symptoms": ["no closed-loop correction", "stuck rich or lean at cruise"] },
+    "22": { "description": "Injector 1 open/short", "system": "fuel", "severity": "critical", "symptoms": ["cylinder 1 misfire or no fuel"] },
+    "23": { "description": "Injector 2 open/short", "system": "fuel", "severity": "critical", "symptoms": ["cylinder 2 misfire or no fuel"] },
+    "24": { "description": "Ignition coil 1 primary circuit", "system": "ignition", "severity": "critical", "symptoms": ["cylinder 1 misfire"] },
+    "25": { "description": "Ignition coil 2 primary circuit", "system": "ignition", "severity": "critical", "symptoms": ["cylinder 2 misfire"] },
+    "31": { "description": "Fuel pump relay circuit", "system": "fuel", "severity": "critical", "symptoms": ["no fuel delivery", "no prime on key-on"] },
+    "32": { "description": "Idle air control valve circuit", "system": "idle", "severity": "medium", "symptoms": ["unstable idle", "stalling"] },
+    "33": { "description": "CKP sensor no signal", "system": "ignition", "severity": "critical", "symptoms": ["no start", "random stalling"] },
+    "41": { "description": "Vehicle speed sensor no signal", "system": "drivetrain", "severity": "low", "symptoms": ["no speedometer", "DFCO may not function"] },
+    "42": { "description": "Side-stand switch circuit", "system": "safety", "severity": "medium", "symptoms": ["engine cuts when in gear", "no start"] },
+    "43": { "description": "Tip-over sensor circuit", "system": "safety", "severity": "medium", "symptoms": ["random engine kill"] },
+    "44": { "description": "Immobilizer communication error", "system": "security", "severity": "critical", "symptoms": ["no start", "intermittent no-start", "fuel cut"] }
+  },
+  "notes": "Code numbers may vary by ECU calibration/year. Expand from IAW5xReader DTC readout."
+}

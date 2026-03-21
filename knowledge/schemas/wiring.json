@@ -1,0 +1,11 @@
+{
+  "description": "GP800/SRV850 wiring reference — populate from wiring diagrams",
+  "version": "1.0.0",
+  "status": "STUB — requires wiring diagram analysis",
+  "ecu_connector": {
+    "type": "Molex multi-pin",
+    "pin_count": "TODO: count from physical ECU",
+    "pins": {}
+  },
+  "notes": "Pin mapping between GP800 harness and SRV850 ECU must be documented in my-bike/srv850-to-gp800-wiring.md"
+}

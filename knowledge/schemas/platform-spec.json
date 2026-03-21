@@ -1,0 +1,43 @@
+{
+  "description": "GP800 vs SRV850 platform comparison — hardware differences affecting ECU swap",
+  "version": "1.0.0",
+  "platforms": {
+    "GP800": {
+      "production": "2008-2012",
+      "engine": { "displacement_cc": 839.3, "bore_mm": 76, "stroke_mm": 92.5, "compression": 10.5, "layout": "V90", "cylinders": 2, "valves_per_cyl": 4, "valvetrain": "SOHC" },
+      "power": { "kw": 56, "hp": 75, "at_rpm": 7500 },
+      "torque": { "nm": 76, "at_rpm": 6000 },
+      "ecu": "IAW 5AM",
+      "spark_plugs": { "type": "NGK CR9EK", "count": 4, "per_cylinder": 2, "gap_mm": 0.7 },
+      "fuel": { "system": "EFI", "pressure_bar": 3.0 },
+      "transmission": "CVT + cardan shaft",
+      "abs": false,
+      "immobilizer": "integrated antenna ring",
+      "protocol": "K-Line ISO 9141-2 at 10400 baud"
+    },
+    "SRV850": {
+      "production": "2012-2016",
+      "engine": "same as GP800",
+      "abs": true,
+      "abs_type": "2-channel Continental",
+      "immobilizer": "separate antenna ring",
+      "notes": "Updated fuel/ignition maps, different throttle response tuning"
+    },
+    "differences": {
+      "abs": { "gp800": false, "srv850": true, "impact": "ECU may throw DTCs or enter limp mode if ABS signals missing" },
+      "immobilizer_antenna": { "gp800": "integrated", "srv850": "separate ring", "impact": "verify physical compatibility" },
+      "ecu_calibration": { "impact": "different fuel/ignition maps for different exhaust/intake geometry" },
+      "dashboard": { "impact": "different CAN messages may cause gauge issues" },
+      "exhaust_routing": { "impact": "different backpressure affects fuel map requirements" }
+    },
+    "parts_interchangeability": {
+      "engine_internals": "direct fit",
+      "cvt_components": "direct fit",
+      "cardan_shaft": "direct fit",
+      "brake_calipers": "direct fit (non-ABS side)",
+      "sensors": "VERIFY — calibration curves may differ",
+      "injectors": "VERIFY — flow rates may differ",
+      "throttle_body": "VERIFY — diameter may differ"
+    }
+  }
+}

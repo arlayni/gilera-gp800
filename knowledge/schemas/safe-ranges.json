@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "IAW 5AM safety ranges — single source of truth for CLI tool and Claude Code skill",
+  "version": "1.0.0",
+  "last_updated": "2026-03-21",
+  "parameters": {
+    "fuel_map_value": {
+      "unit": "raw",
+      "hard_limits": { "min": 0, "max": 255 },
+      "tuning_guidance": { "max_change_percent": 15 },
+      "flash_blockers": ["all_zero_row", "all_255_row"],
+      "notes": "TODO: Confirm 8-bit vs 16-bit from actual ECU dump"
+    },
+    "ignition_advance": {
+      "unit": "deg_btdc",
+      "hard_limits": { "min": -10, "max": 45 },
+      "tuning_guidance": { "max_change_from_stock_deg": 3, "max_advance_over_stock_high_load_deg": 5 },
+      "flash_blockers": ["below_min", "above_max"],
+      "notes": ">40 deg risks detonation on 95 RON fuel"
+    },
+    "idle_rpm": {
+      "unit": "rpm",
+      "hard_limits": { "min": 1100, "max": 1500 },
+      "tuning_guidance": { "target_warm": 1200, "acceptable_range": [1100, 1400] },
+      "notes": "<1100 stalls; >1500 causes clutch drag"
+    },
+    "rev_limiter": {
+      "unit": "rpm",
+      "hard_limits": { "min": 8000, "max": 9500 },
+      "tuning_guidance": { "stock": 8500 },
+      "flash_blockers": ["above_max"],
+      "notes": ">9500 risks valve float on stock internals"
+    },
+    "lambda_target": {
+      "unit": "lambda",
+      "hard_limits": { "min": 0.82, "max": 1.05 },
+      "tuning_guidance": {
+        "idle": { "target": 1.0, "range": [0.97, 1.03] },
+        "cruise": { "target": 1.0, "range": [0.97, 1.03] },
+        "wot": { "target": 0.86, "range": [0.85, 0.88] },
+        "wot_rear_cylinder_offset": -0.02
+      },
+      "flash_blockers": ["below_min", "above_max_at_wot"],
+      "notes": "<0.82 fouling/catalyst destruction; >1.05 lean misfire/piston damage"
+    },
+    "injector_duration": {
+      "unit": "ms",
+      "hard_limits": { "min": 0.5, "max": 12.0 },
+      "notes": ">12ms hydro-lock risk"
+    },
+    "injector_dead_time": {
+      "unit": "ms",
+      "validation": "must_be_monotonically_decreasing_with_voltage",
+      "typical_at_14v": { "min": 0.5, "max": 3.0 },
+      "typical_at_8v": { "min": 1.0, "max": 6.0 },
+      "flash_blockers": ["not_monotonic"]
+    },
+    "battery_voltage_for_flash": {
+      "unit": "volts",
+      "hard_limits": { "min": 12.0 },
+      "notes": "Below 12V risks corrupted flash write"
+    }
+  },
+  "tuning_rules": {
+    "max_single_step_percent": 5,
+    "injector_flow_scaling": "max_raw_change = max_step% * (stock_flow / actual_flow)",
+    "one_variable_at_a_time": true,
+    "cylinder_order": "front_first_then_rear",
+    "rear_cylinder_offset": {
+      "fuel": "0.02-0.03 lambda richer than front",
+      "timing": "1-2 deg more retarded than front"
+    }
+  }
+}

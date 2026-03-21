@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HardwareDelta",
+  "description": "ECUEngineer to TuningAdvisor MANDATORY communication format",
+  "type": "object",
+  "required": ["injector_flow_cc_min", "tps_voltage_range", "coolant_sensor_curve", "exhaust_config", "sai_valve_state"],
+  "properties": {
+    "injector_flow_cc_min": {
+      "type": "object",
+      "properties": {
+        "stock": { "type": "number" },
+        "current": { "type": "number" },
+        "verified": { "type": "boolean" }
+      }
+    },
+    "tps_voltage_range": {
+      "type": "object",
+      "properties": {
+        "stock_srv850": { "type": "array", "items": { "type": "number" } },
+        "actual_measured": { "type": ["array", "string"] }
+      }
+    },
+    "coolant_sensor_curve": { "type": "string", "enum": ["NTC_GP800", "NTC_SRV850", "UNKNOWN"] },
+    "exhaust_config": { "type": "string", "enum": ["2-1", "2-2", "UNKNOWN"] },
+    "sai_valve_state": { "type": "string", "enum": ["open", "closed", "disconnected", "unknown"] }
+  }
+}

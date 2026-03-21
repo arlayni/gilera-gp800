@@ -1,0 +1,17 @@
+{
+  "description": "Immobilizer system data — SENSITIVE: fields marked redact:true must never be shared",
+  "version": "1.0.0",
+  "system": {
+    "type": "Piaggio/Magneti Marelli",
+    "transponder_chip": "Megamos Crypto 48 / ID48 (verify)",
+    "max_keys": 4,
+    "requires_pin_for_coding": true
+  },
+  "this_bike": {
+    "ecu_origin": "Aprilia SRV850",
+    "immobilizer_status": "UNKNOWN — verify: FULLY_CODED / PARTIALLY_CODED / BYPASSED",
+    "pin_code": { "value": null, "redact": true, "notes": "NEVER share this value" },
+    "key_codes": { "values": [], "redact": true, "notes": "NEVER share these values" },
+    "coding_history": "Key codes synced to SRV850 ECU, later lost and re-linked by friend"
+  }
+}

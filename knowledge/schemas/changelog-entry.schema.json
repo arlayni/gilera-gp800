@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChangelogEntry",
+  "description": "Tuning session log entry format",
+  "type": "object",
+  "required": ["session_id", "date", "phase", "step"],
+  "properties": {
+    "session_id": { "type": "string", "format": "uuid" },
+    "date": { "type": "string", "format": "date-time" },
+    "phase": { "type": "string", "enum": ["Recovery", "Idle", "Cruise", "Performance"] },
+    "step": { "type": "string" },
+    "map_version_before": { "type": "string" },
+    "map_version_after": { "type": "string" },
+    "cells_changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "map": { "type": "string" },
+          "row": { "type": "integer" },
+          "col": { "type": "integer" },
+          "old_value": { "type": "number" },
+          "new_value": { "type": "number" }
+        }
+      }
+    },
+    "measured_result": { "type": "object" },
+    "target": { "type": "object" },
+    "result_vs_target": { "type": "string", "enum": ["CLOSER", "MET", "DIVERGED", "UNKNOWN"] },
+    "notes": { "type": "string" },
+    "next_action": { "type": "string" }
+  }
+}

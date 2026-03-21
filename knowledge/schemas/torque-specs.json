@@ -1,0 +1,15 @@
+{
+  "description": "GP800 torque specifications — approximate, verify against service manual",
+  "version": "1.0.0",
+  "status": "PARTIAL — needs service manual verification",
+  "specs": {
+    "spark_plugs": { "nm": 12, "verified": false },
+    "oil_drain_plug": { "nm": 30, "verified": false },
+    "cardan_shaft_flange_bolts": { "nm": null, "notes": "MUST verify from service manual", "verified": false },
+    "exhaust_manifold_nuts": { "nm": 22, "verified": false },
+    "wheel_axle_nut": { "nm": 120, "verified": false },
+    "throttle_body_clamps": { "method": "hand-tight + 1/4 turn", "verified": false },
+    "variator_nut": { "nm": 100, "verified": false },
+    "clutch_nut": { "nm": 100, "verified": false }
+  }
+}

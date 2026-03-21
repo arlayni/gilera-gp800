@@ -1,0 +1,18 @@
+{
+  "description": "IAW 5AM map table definitions — populate from actual .txt export analysis",
+  "version": "1.0.0",
+  "status": "STUB — requires real ECU dump to complete",
+  "maps": {
+    "fuel_main_front": { "description": "Main fuel map, cylinder 1 (front)", "axes": { "x": "RPM", "y": "TPS%" }, "value_unit": "ms", "storage": "TODO: confirm 8-bit or 16-bit", "dimensions": "TODO: discover from .txt export" },
+    "fuel_main_rear": { "description": "Main fuel map, cylinder 2 (rear)", "axes": { "x": "RPM", "y": "TPS%" }, "value_unit": "ms" },
+    "ignition_front": { "description": "Ignition advance, cylinder 1 (front)", "axes": { "x": "RPM", "y": "load" }, "value_unit": "deg_btdc" },
+    "ignition_rear": { "description": "Ignition advance, cylinder 2 (rear)", "axes": { "x": "RPM", "y": "load" }, "value_unit": "deg_btdc" },
+    "idle_rpm_target": { "description": "Target idle RPM by coolant temp", "axes": { "x": "ECT_degC" }, "value_unit": "rpm" },
+    "lambda_target": { "description": "Target lambda at each operating point", "axes": { "x": "RPM", "y": "TPS%" }, "value_unit": "lambda" },
+    "cold_start_enrichment": { "description": "Cranking fuel by coolant temp", "axes": { "x": "ECT_degC" }, "value_unit": "ms" },
+    "warmup_enrichment": { "description": "Post-start fuel correction by temp", "axes": { "x": "ECT_degC" }, "value_unit": "percent" },
+    "accel_enrichment": { "description": "Transient fuel by TPS rate", "axes": { "x": "TPS_rate" }, "value_unit": "ms" },
+    "injector_dead_time": { "description": "Injector opening delay vs battery voltage", "axes": { "x": "battery_V" }, "value_unit": "ms" },
+    "rev_limiter": { "description": "RPM limit", "type": "scalar", "value_unit": "rpm" }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "GP800 maintenance schedule — verify against service manual",
+  "version": "1.0.0",
+  "intervals_km": {
+    "1000": ["oil_change", "general_inspection"],
+    "6000": ["oil_change", "oil_filter", "spark_plugs_inspect", "valve_clearance_inspect", "coolant_level", "brake_fluid_check"],
+    "12000": ["oil_change", "oil_filter", "spark_plugs_replace", "air_filter_replace", "cvt_belt_inspect", "variator_rollers_inspect", "final_drive_oil", "throttle_body_clean"],
+    "24000": ["oil_change", "oil_filter", "cvt_belt_replace", "variator_rollers_replace", "clutch_inspect", "coolant_replace", "brake_fluid_replace", "valve_clearance_adjust"],
+    "48000": ["all_24000_items", "cardan_shaft_inspect", "bevel_gear_bearings_inspect"]
+  },
+  "fluids": {
+    "engine_oil": { "spec": "10W-40 JASO MA2", "capacity_with_filter_L": 3.5, "capacity_without_filter_L": 3.2 },
+    "coolant": { "spec": "50/50 ethylene glycol", "total_system_L": 2.25, "drain_refill_L": 1.6 },
+    "brake_fluid": { "spec": "DOT 4" },
+    "final_drive": { "spec": "SAE 80W-90 GL-5", "capacity_mL": 175, "notes": "verify from service manual" }
+  }
+}

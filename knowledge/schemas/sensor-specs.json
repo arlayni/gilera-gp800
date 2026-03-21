@@ -1,0 +1,459 @@
+{
+  "sensors": {
+    "tps": {
+      "name": "Throttle Position Sensor",
+      "type": "potentiometer",
+      "wires": 3,
+      "description": "Measures throttle plate angle for fuel mixture control",
+      "test": {
+        "method": "voltage sweep with throttle movement",
+        "procedure": [
+          "Warm engine to operating temperature",
+          "Ignition ON, engine OFF",
+          "Measure voltage at signal pin while moving throttle from fully closed to fully open",
+          "Verify linear response without dead spots or hesitation"
+        ]
+      },
+      "expected": {
+        "closed_throttle": {
+          "voltage": "0.5V",
+          "tolerance": "±0.1V"
+        },
+        "wide_open_throttle": {
+          "voltage": "4.5V",
+          "tolerance": "±0.2V"
+        },
+        "resistance_sweep": "1-5 kOhm",
+        "response_smoothness": "linear, no dropouts"
+      },
+      "failure_modes": {
+        "open_circuit": "constant high voltage, engine cannot be throttled smoothly",
+        "short_to_ground": "constant low voltage (~0V), limp mode or stalling",
+        "contamination": "erratic readings, stumbling, hesitation on acceleration",
+        "mechanical_wear": "dead spots, flat sections in voltage curve, hesitation"
+      }
+    },
+    "map": {
+      "name": "Manifold Absolute Pressure",
+      "type": "piezo-resistive",
+      "wires": 3,
+      "description": "Measures intake manifold pressure for load calculation",
+      "test": {
+        "method": "voltage measurement at key-on and idle conditions",
+        "procedure": [
+          "Ignition ON, engine OFF (key-on)",
+          "Record voltage reading",
+          "Start engine and allow to reach idle RPM (700-900 RPM)",
+          "Record voltage reading under steady idle",
+          "Verify smooth transition without spikes or drops"
+        ]
+      },
+      "expected": {
+        "key_on": {
+          "voltage": "4.0V",
+          "description": "atmospheric pressure signal when intake valve closed"
+        },
+        "idle": {
+          "voltage": "1.0V",
+          "description": "vacuum signal under idle manifold depression"
+        },
+        "pressure_range": "0-100 kPa nominal",
+        "temperature_stable": "readings must not drift with engine temperature"
+      },
+      "failure_modes": {
+        "vacuum_leak": "voltage drifts high, rough idle, increased emissions",
+        "electrical_open": "ECU reads maximum pressure, rich mixture, black smoke",
+        "electrical_short": "constant minimum voltage, lean mixture, stumbling",
+        "sensor_failure": "erratic changes unrelated to throttle position, random misfires"
+      }
+    },
+    "iat": {
+      "name": "Intake Air Temperature",
+      "type": "NTC thermistor",
+      "wires": 2,
+      "description": "Measures incoming air temperature for density-based fuel correction",
+      "test": {
+        "method": "resistance measurement at known temperatures",
+        "procedure": [
+          "Allow sensor to reach ambient room temperature (20°C/68°F)",
+          "Measure resistance with multimeter",
+          "Record reading (should be ~2500 ohm)",
+          "Place sensor in 80°C (176°F) hot water bath for 5 minutes",
+          "Measure resistance again (should be ~400 ohm)",
+          "Verify resistance decreases linearly as temperature increases"
+        ]
+      },
+      "expected": {
+        "20_celsius": {
+          "resistance": "2500 ohm",
+          "tolerance": "±10%"
+        },
+        "80_celsius": {
+          "resistance": "400 ohm",
+          "tolerance": "±10%"
+        },
+        "temperature_curve": "negative temperature coefficient (NTC)",
+        "response_time": "fast response to air temperature changes"
+      },
+      "failure_modes": {
+        "open_circuit": "maximum resistance, ECU assumes very cold air, over-rich mixture",
+        "short_to_ground": "minimum resistance, ECU assumes very hot air, lean mixture",
+        "thermistor_degradation": "slow response, incorrect resistance at known temperature",
+        "connector_corrosion": "intermittent resistance values, hesitation and surging"
+      }
+    },
+    "ect": {
+      "name": "Engine Coolant Temperature",
+      "type": "NTC thermistor",
+      "wires": 2,
+      "description": "Measures engine coolant temperature for cold-start enrichment and fan control",
+      "test": {
+        "method": "resistance measurement at known temperatures",
+        "procedure": [
+          "Allow engine to cool to ambient room temperature",
+          "Remove coolant hose and extract sensor (catch coolant)",
+          "Measure resistance at ambient temperature (20°C/68°F)",
+          "Place sensor in 90°C (194°F) hot water bath for 5 minutes",
+          "Measure resistance again",
+          "Reinstall sensor and top off coolant",
+          "Verify resistance readings match specifications"
+        ]
+      },
+      "expected": {
+        "20_celsius": {
+          "resistance": "2500 ohm",
+          "tolerance": "±10%"
+        },
+        "90_celsius": {
+          "resistance": "300 ohm",
+          "tolerance": "±10%"
+        },
+        "operating_range": "0°C to 120°C linearly mapped",
+        "response_curve": "negative temperature coefficient (NTC)"
+      },
+      "failure_modes": {
+        "open_circuit": "ECU assumes engine is cold, constant rich mixture, rough running",
+        "short_to_ground": "ECU assumes engine is overheating, lean mixture, stalling",
+        "thermal_lag": "delayed response, false cold start enrichment on warm restarts",
+        "corroded_connector": "intermittent connection, hunting idle, surging"
+      }
+    },
+    "ckp": {
+      "name": "Crankshaft Position",
+      "type": "VR inductive",
+      "wires": 2,
+      "description": "Inductive proximity sensor detecting crankshaft rotation for ignition timing and fuel injection sync",
+      "test": {
+        "method": "AC voltage measurement during cranking and running",
+        "procedure": [
+          "Set multimeter to AC voltage (VAC) mode",
+          "Crank engine (do not start)",
+          "Measure peak AC voltage across sensor terminals during cranking",
+          "Should see minimum 200mV AC signal",
+          "Start engine and measure AC voltage at idle, 2000 RPM, and 5000 RPM",
+          "Voltage should increase with RPM but not saturate",
+          "Check resistance: should measure 200-400 ohm DC between terminals"
+        ]
+      },
+      "expected": {
+        "dc_resistance": "200-400 ohm",
+        "cranking_voltage": {
+          "peak_ac": "200 mV minimum",
+          "description": "minimum signal voltage during engine cranking"
+        },
+        "running_voltage": {
+          "idle_1000_rpm": "1.0-2.0 V AC",
+          "high_rpm_5000": "3.0-5.0 V AC"
+        },
+        "air_gap": {
+          "distance": "0.5-1.5 mm",
+          "description": "sensor to reluctor wheel clearance"
+        },
+        "signal_integrity": "clean sinusoidal waveform, no noise or drop-outs"
+      },
+      "failure_modes": {
+        "open_circuit": "no AC signal, no spark, no fuel injection, engine will not start",
+        "short_to_ground": "low AC signal, spark plugs may fire erratically, starting difficulty",
+        "excessive_air_gap": "weak AC signal, intermittent ignition, misfires at high RPM",
+        "connector_corrosion": "intermittent signal loss, random misfires, stalling while driving",
+        "reluctor_wear": "reduced signal amplitude, poor spark quality at idle"
+      }
+    },
+    "cmp": {
+      "name": "Camshaft Position",
+      "type": "TODO",
+      "wires": null,
+      "description": "Status: Confirm if GP800/SRV850 uses CMP sensor - may use single-point or distributorless ignition without cam signal",
+      "test": {
+        "method": "pending confirmation",
+        "procedure": []
+      },
+      "expected": {},
+      "failure_modes": {}
+    },
+    "o2": {
+      "name": "Oxygen Sensor (Lambda)",
+      "type": "narrowband zirconia heated",
+      "wires": 4,
+      "description": "Measures exhaust oxygen content for closed-loop fuel mixture feedback",
+      "test": {
+        "method": "multi-stage voltage and resistance test",
+        "procedure": [
+          "Allow engine to reach 80°C+ coolant temperature",
+          "Access O2 sensor terminals (harness side)",
+          "Measure heater circuit resistance: should read 2-15 ohm",
+          "Apply 12V power and measure heater current draw: 0.5-2.0A normal",
+          "Measure signal voltage at 2000 RPM idle under steady conditions",
+          "Signal should oscillate between 0.1V and 0.9V at 1-3 Hz frequency",
+          "Rich mixture: voltage stays >0.6V",
+          "Lean mixture: voltage stays <0.4V"
+        ]
+      },
+      "expected": {
+        "heater_resistance": "2-15 ohm",
+        "heater_current": "0.5-2.0A at 12V",
+        "signal_voltage": {
+          "range": "0.1-0.9V",
+          "frequency": "1-3 Hz oscillation"
+        },
+        "rich_mixture": ">0.6V DC",
+        "lean_mixture": "<0.4V DC",
+        "response_time": "100-400 ms to composition change",
+        "warm_up_time": "30-45 seconds from cold start to active"
+      },
+      "failure_modes": {
+        "heater_open": "slow sensor warm-up, no closed-loop feedback, rich mixture at startup",
+        "heater_short": "blown fuse or relay, no oxygen feedback",
+        "sensor_poisoning": "slow response, stuck high or low voltage, rough running",
+        "thermal_shock": "sensor cracks, open circuit after cold start, limp mode",
+        "exhaust_leak": "sensor reads lean (low voltage), lean mixture command, lean stumble"
+      }
+    },
+    "injector": {
+      "name": "Fuel Injector",
+      "type": "high-impedance solenoid",
+      "wires": 2,
+      "description": "Solenoid actuator spraying fuel into intake manifold, must be matched pair for proper mixture balance",
+      "test": {
+        "method": "resistance and current draw measurement",
+        "procedure": [
+          "Remove fuel rail with injectors from intake manifold",
+          "Measure DC resistance of each injector coil with ohmmeter",
+          "Both injectors should read 12-16 ohm ±0.5 ohm match tolerance",
+          "If resistance differs by >1 ohm, replace the higher-resistance injector",
+          "Apply 12V square wave pulse (5ms pulse) and measure peak current",
+          "Current should be 0.8-1.2A peak (depends on resistance)",
+          "Injectors must open/close crisply with no bounce or delay",
+          "Listen for consistent clicking at both injectors"
+        ]
+      },
+      "expected": {
+        "resistance": {
+          "value": "12-16 ohm",
+          "pair_match": "must be within ±0.5 ohm of each other"
+        },
+        "peak_current": "0.8-1.2A (when pulsed at 12V)",
+        "spray_pattern": "fine mist, symmetric cone, no dripping",
+        "opening_response": "no dead time, crisp click audible",
+        "closing_response": "immediate cessation, no dribble"
+      },
+      "failure_modes": {
+        "high_resistance": "weak spray pattern, lean mixture, hesitation, starting trouble",
+        "low_resistance": "ECU current limiting or shutdown, no fuel delivery",
+        "internal_leakage": "fuel dripping from tip when power off, rough idle, black smoke",
+        "coil_open": "no electrical continuity, injector never opens, cylinder starves of fuel",
+        "coil_short": "excessive current draw, ECU shuts down injector driver, misfires",
+        "needle_stuck": "constant fuel flow or complete blockage, incorrect fuel pressure"
+      }
+    },
+    "coil_primary": {
+      "name": "Ignition Coil Primary Winding",
+      "type": "copper wire coil",
+      "wires": 2,
+      "description": "Primary (low-voltage) side of ignition coil, creates magnetic field collapsed for spark generation",
+      "test": {
+        "method": "DC resistance measurement with ignition OFF",
+        "procedure": [
+          "Turn ignition OFF and disconnect coil pack",
+          "Locate primary terminals (low voltage side, typically larger diameter pins)",
+          "Set multimeter to ohm mode",
+          "Measure resistance between primary terminals",
+          "Should read 0.5-2.0 ohm",
+          "If resistance is zero (short) or open (infinite), coil must be replaced"
+        ]
+      },
+      "expected": {
+        "resistance": {
+          "value": "0.5-2.0 ohm",
+          "description": "low resistance primary winding"
+        },
+        "continuity": "must have measurable resistance (not open)",
+        "symmetry": "if dual coil, both primary sides should match within 0.1 ohm"
+      },
+      "failure_modes": {
+        "open_circuit": "infinite resistance, no primary current, no secondary voltage, no spark",
+        "short_circuit": "zero or very low resistance, excessive current draw, coil overheating",
+        "partial_turn_failure": "higher than normal resistance (>2.5 ohm), weak spark, misfires",
+        "thermal_fatigue": "resistance drifts with engine temperature, intermittent misfires",
+        "solder_joint_failure": "intermittent open/short, random misfires, harsh running"
+      }
+    },
+    "coil_secondary": {
+      "name": "Ignition Coil Secondary Winding",
+      "type": "copper wire coil (high turns)",
+      "wires": 1,
+      "description": "Secondary (high-voltage) side of ignition coil, produces 10-40 kV spark voltage",
+      "test": {
+        "method": "resistance and continuity check with ignition OFF",
+        "procedure": [
+          "Turn ignition OFF and disconnect coil pack",
+          "Locate secondary terminal (center HV tower or spark plug wire connector)",
+          "Set multimeter to ohm mode, select highest resistance range (usually 20M ohm)",
+          "Measure resistance between secondary terminal and primary ground reference",
+          "Should read 5,000-15,000 ohm",
+          "If reading shows 0 ohm (short) or infinite (open), coil must be replaced",
+          "Visual inspection: no cracks, carbon tracks, or burn marks on coil tower"
+        ]
+      },
+      "expected": {
+        "resistance": {
+          "value": "5,000-15,000 ohm",
+          "description": "high resistance secondary winding (thousands of turns)"
+        },
+        "insulation": "must be intact with no external tracking or burn marks",
+        "coil_tower": "clean, dry, free of moisture and carbon deposits"
+      },
+      "failure_modes": {
+        "open_circuit": "infinite ohm reading, weak or no spark at plug, misfires",
+        "short_circuit": "zero ohm reading, excessive current draw on primary, coil shutdown",
+        "internal_insulation_breakdown": "erratic high voltage, spark jumps inside coil, weak external spark",
+        "moisture_ingress": "resistance drops significantly, arcing inside coil, damp weather misfires",
+        "carbon_tracking": "visible black paths on tower, partial short, intermittent misfires"
+      }
+    },
+    "battery": {
+      "name": "Battery",
+      "type": "lead-acid or lithium",
+      "wires": 2,
+      "description": "12V power source for electrical system, ignition, and starter motor",
+      "test": {
+        "method": "multi-stage voltage and load testing",
+        "procedure": [
+          "Measure resting voltage: ignition OFF for 15 minutes, meter across battery terminals",
+          "Should read >12.4V DC (healthy resting state)",
+          "Crank engine for 10 seconds without starting, measure voltage across terminals",
+          "Should not drop below 10.5V DC while cranking",
+          "Start engine and measure charging voltage at battery terminals",
+          "Should read 13.5-14.5V DC at idle with alternator running",
+          "Rev engine to 2000 RPM: voltage should stay within 13.5-14.5V range",
+          "Connect headlights and measure voltage: should only drop 0.2-0.3V"
+        ]
+      },
+      "expected": {
+        "resting_voltage": {
+          "value": ">12.4V DC",
+          "description": "battery voltage after 15 minutes of rest"
+        },
+        "cranking_voltage": {
+          "value": ">10.5V DC",
+          "description": "minimum voltage during 10-second cranking session"
+        },
+        "charging_voltage": {
+          "value": "13.5-14.5V DC",
+          "description": "voltage from alternator at idle RPM"
+        },
+        "under_load": "voltage drop <0.3V when lights and accessories are ON"
+      },
+      "failure_modes": {
+        "low_resting_voltage": "<12.4V, discharged battery, weak cranking, no start condition",
+        "excessive_cranking_voltage_drop": "<10.5V indicates weak cells or internal short",
+        "over_charging": ">14.5V indicates faulty voltage regulator, battery may boil",
+        "under_charging": "<13.5V at idle, alternator may be failing, battery slowly discharges",
+        "internal_short": "voltage drops rapidly under load, battery will not hold charge"
+      }
+    },
+    "fuel_pressure": {
+      "name": "Fuel Pressure (System)",
+      "type": "mechanical/pressurized",
+      "wires": 0,
+      "description": "Fuel pump pressure delivery to injectors, must be steady and hold under WOT conditions",
+      "test": {
+        "method": "fuel pressure gauge measurement",
+        "procedure": [
+          "Locate fuel pressure test point on fuel rail (schrader valve or test port)",
+          "Connect fuel pressure gauge (0-10 bar range)",
+          "Turn ignition ON (do not start engine)",
+          "Fuel pump should pressurize fuel system within 3-5 seconds",
+          "Idle pressure: should read 3.0-3.5 bar",
+          "Start engine and verify pressure remains steady at idle",
+          "Accelerate to 2000 RPM and then full throttle (brief WOT)",
+          "Pressure must hold at 3.0-3.5 bar, no drop or spiking",
+          "Perform quick-disconnect test: if pressure holds >2.8 bar for 5 minutes after engine OFF, fuel check valve is good"
+        ]
+      },
+      "expected": {
+        "key_on": {
+          "pressure": "3.0-3.5 bar",
+          "stabilization": "within 5 seconds"
+        },
+        "idle": {
+          "pressure": "3.0-3.5 bar",
+          "stability": "±0.2 bar variation acceptable"
+        },
+        "wot_acceleration": {
+          "pressure": "3.0-3.5 bar maintained",
+          "description": "pressure must not drop under sustained full throttle"
+        },
+        "pressure_hold": {
+          "time": ">5 minutes",
+          "minimum_pressure": "2.8 bar",
+          "description": "check valve prevents fuel return to tank"
+        }
+      },
+      "failure_modes": {
+        "no_pressure": "fuel pump not running or blocked filter, no fuel delivery to injectors",
+        "low_pressure": "3.0-3.5 bar cannot be achieved, lean mixture, hard starting",
+        "pressure_oscillation": "hunting between high and low, fuel regulator may be sticking",
+        "regulator_bypass": "pressure cannot be held, excessive fuel returns to tank",
+        "blocked_fuel_line": "initially high pressure, then drops and will not recover",
+        "damaged_injector_o_ring": "pressure cannot be held, fuel spray leaks into cylinder"
+      }
+    },
+    "idle_stepper": {
+      "name": "Idle Air Control Stepper Motor",
+      "type": "4-wire bipolar stepper",
+      "wires": 4,
+      "description": "Stepper motor controlling idle air bypass valve to regulate engine idle speed and load compensation",
+      "test": {
+        "method": "resistance measurement and step response",
+        "procedure": [
+          "Disconnect stepper motor harness (4-wire connector)",
+          "Measure DC resistance between each pair of terminals",
+          "Should read 40-60 ohm between opposite coils (terminals 1-3 and 2-4)",
+          "If any reading is open (infinite) or zero (short), motor must be replaced",
+          "Reconnect harness and turn ignition ON",
+          "Listen near idle stepper: should hear quiet clicking as motor takes steps",
+          "Revving engine slightly should trigger additional stepper adjustments (audible clicks)",
+          "With engine warm at idle, stepper position should remain stable without hunting"
+        ]
+      },
+      "expected": {
+        "resistance_per_winding": {
+          "value": "40-60 ohm",
+          "description": "each of the 4 windings (A+/A-, B+/B-)"
+        },
+        "pair_match": "opposite windings should be within ±5% of each other",
+        "motor_response": "quiet, regular clicking during idle adjustment",
+        "step_accuracy": "smooth transitions without skipping or grinding",
+        "position_stability": "idle speed within 50 RPM of target once stabilized"
+      },
+      "failure_modes": {
+        "open_coil": "stepper cannot step, idle speed hunting (too high or too low)",
+        "shorted_coil": "excessive current draw, ECU may disable stepper, fixed idle position",
+        "mechanical_jam": "stepper hums but does not move, idle speed locked at wrong value",
+        "connector_corrosion": "intermittent stepping, hunting idle, surging at steady throttle",
+        "internal_carbon": "grinding sound, sluggish stepping, idle control erratic"
+      }
+    }
+  }
+}
