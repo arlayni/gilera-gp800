@@ -98,6 +98,23 @@ ECU map file storage — organized by state.
 |------|-------------|
 | [Expert Agent System Design Spec](docs/superpowers/specs/2026-03-21-gilera-gp800-expert-agent-design.md) | Full system architecture, agent specifications, safety rules |
 | [Knowledge Base Foundation Plan](docs/superpowers/plans/2026-03-21-knowledge-base-foundation.md) | Task plan for building this knowledge base |
+| [Claude Code Skill Plan](docs/superpowers/plans/2026-03-21-claude-skill-gp800-expert.md) | Task plan for building the 8-agent Claude Code skill |
+
+---
+
+## Agents
+
+Sub-agent prompt templates for the `gilera-gp800-expert` Claude Code skill.
+
+| File | Agent | Role |
+|------|-------|------|
+| [safety-guard.md](agents/safety-guard.md) | SafetyGuard | VETO authority — parameter validation, risk scoring |
+| [flash-monitor.md](agents/flash-monitor.md) | FlashMonitor | Post-flash checklists, rollback procedures |
+| [diagnostician.md](agents/diagnostician.md) | Diagnostician | Symptom intake, diagnostic reasoning |
+| [ecu-engineer.md](agents/ecu-engineer.md) | ECUEngineer | Map parsing, comparison, validation, stock sourcing |
+| [mechanical-advisor.md](agents/mechanical-advisor.md) | MechanicalAdvisor | Mechanical systems, parts, 14-point pre-check |
+| [tuning-advisor.md](agents/tuning-advisor.md) | TuningAdvisor | Incremental tuning guidance, 12-step order |
+| [knowledge-service.md](agents/knowledge-service.md) | KnowledgeService | Data retrieval, web research, changelog |
 
 ---
 
