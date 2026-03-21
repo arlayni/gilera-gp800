@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "gp800-tool"
+version = "0.1.0"
+description = "Gilera GP800 ECU map analysis and safety validation tool"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.5"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+gp800-tool = "gp800_tool.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
