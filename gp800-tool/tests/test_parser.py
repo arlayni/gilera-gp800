@@ -79,21 +79,21 @@ def test_get_hard_limit(schemas_dir):
 def test_parse_txt_file(sample_map_txt):
     result = parse_txt_file(sample_map_txt)
     assert len(result.tables) == 2
-    assert "Fuel Map - Cylinder 1 (Front)" in result.tables
-    assert "Ignition Map - Cylinder 1 (Front)" in result.tables
+    assert "Fuel Map Front" in result.tables
+    assert "Ignition Map Front" in result.tables
 
 
 def test_parse_fuel_map_dimensions(sample_map_txt):
     result = parse_txt_file(sample_map_txt)
-    fuel = result.tables["Fuel Map - Cylinder 1 (Front)"]
-    assert fuel.cols == 8  # 8 RPM breakpoints
-    assert fuel.rows == 7  # 7 TPS breakpoints
+    fuel = result.tables["Fuel Map Front"]
+    assert fuel.cols == 7  # 7 RPM breakpoints
+    assert fuel.rows == 8  # 8 TPS breakpoints
 
 
 def test_parse_fuel_map_values(sample_map_txt):
     result = parse_txt_file(sample_map_txt)
-    fuel = result.tables["Fuel Map - Cylinder 1 (Front)"]
-    assert fuel.get_cell(0, 0) == 3.2  # first cell
+    fuel = result.tables["Fuel Map Front"]
+    assert fuel.get_cell(0, 0) == 80  # first data cell
     assert fuel.x_axis_values[0] == 1000  # first RPM
     assert fuel.y_axis_values[-1] == 100  # last TPS
 

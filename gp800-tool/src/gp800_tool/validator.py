@@ -48,18 +48,21 @@ def _check_fuel_map(table: MapTable, ranges: dict) -> list[ValidationResult]:
             severity="BLOCKER",
         ))
 
-    max_dur = get_hard_limit(ranges, "injector_duration", "max")
-    if max_dur:
-        for r_idx, row in enumerate(table.data):
-            for c_idx, val in enumerate(row):
-                if val > max_dur:
-                    results.append(ValidationResult(
-                        passed=False,
-                        check_name="injector_duration_max",
-                        message=f"BLOCKER: {table.name} cell [{r_idx},{c_idx}] = {val}ms exceeds max {max_dur}ms",
-                        severity="BLOCKER",
-                        cell_references=[f"{table.name}[{r_idx},{c_idx}]"],
-                    ))
+    # Only check injector duration limits when values are in ms (not raw 8-bit map values)
+    # Raw 8-bit fuel maps use values 0-255 as scaling factors, not milliseconds
+    if table.value_unit == "ms" and table.max_value() <= 20:
+        max_dur = get_hard_limit(ranges, "injector_duration", "max")
+        if max_dur:
+            for r_idx, row in enumerate(table.data):
+                for c_idx, val in enumerate(row):
+                    if val > max_dur:
+                        results.append(ValidationResult(
+                            passed=False,
+                            check_name="injector_duration_max",
+                            message=f"BLOCKER: {table.name} cell [{r_idx},{c_idx}] = {val}ms exceeds max {max_dur}ms",
+                            severity="BLOCKER",
+                            cell_references=[f"{table.name}[{r_idx},{c_idx}]"],
+                        ))
 
     if not results:
         results.append(ValidationResult(
