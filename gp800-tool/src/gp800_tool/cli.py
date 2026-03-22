@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 
+from .binary_parser import parse_binary, compare_binaries, IAW5AM_BIN_SIZE
 from .parser import parse_txt_file
 from .validator import validate_map_file
 from .comparator import compare_map_files
@@ -126,6 +127,102 @@ def compare(file1, file2):
             f"{d.value_a} -> {d.value_b} (delta: {d.delta:+.1f}, {d.delta_percent:+.1f}%)",
             fg=color,
         ))
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--tables/--no-tables", default=True, help="Show detected tables")
+@click.option("--axes/--no-axes", default=True, help="Show detected axes")
+def bindump(file, tables, axes):
+    """Analyze a binary (.bin) ECU dump file."""
+    path = Path(file)
+    data = path.read_bytes()
+
+    if len(data) != IAW5AM_BIN_SIZE:
+        click.echo(click.style(
+            f"WARNING: File size {len(data)} != expected {IAW5AM_BIN_SIZE} bytes",
+            fg="yellow"))
+
+    dump = parse_binary(path)
+
+    # Identity
+    ident = dump.identity
+    click.echo(f"File:          {dump.source_path}")
+    click.echo(f"Size:          {dump.file_size:,} bytes")
+    click.echo(f"SHA256:        {dump.checksum[:16]}...")
+    click.echo(f"Platform:      {ident.platform}")
+    click.echo(f"Variant:       {ident.variant}")
+    click.echo(f"Software:      {ident.software_id}")
+    click.echo(f"Drawing:       {ident.drawing_number}")
+    click.echo(f"Hardware:      {ident.hardware_id}")
+    click.echo(f"Homologation:  {ident.homologation}")
+    click.echo()
+
+    if axes and dump.axes:
+        click.echo(f"Detected {len(dump.axes)} axis breakpoint arrays:")
+        for ax in dump.axes:
+            label = f"  {ax.axis_type:8s} @ 0x{ax.offset:05X}"
+            vals_str = ", ".join(str(v) for v in ax.values[:10])
+            if ax.count > 10:
+                vals_str += f", ... ({ax.count} total)"
+            click.echo(f"{label}: [{vals_str}]")
+        click.echo()
+
+    if tables and dump.regions:
+        click.echo(f"Detected {len(dump.regions)} calibration tables:")
+        for reg in dump.regions:
+            click.echo(f"  {reg.name}")
+            click.echo(f"    Offset: 0x{reg.offset:05X}  Size: {reg.rows}x{reg.cols}")
+            if reg.x_axis:
+                click.echo(f"    X-axis: {reg.x_axis.axis_type} [{reg.x_axis.values[0]}-{reg.x_axis.values[-1]}]")
+            flat = reg.flat_values()
+            click.echo(f"    Values: {min(flat)}-{max(flat)} (mean {sum(flat)/len(flat):.0f})")
+            # Print first 3 rows
+            for r in range(min(3, reg.rows)):
+                row_str = " ".join(f"{v:5d}" for v in reg.values[r])
+                click.echo(f"    row[{r:2d}]: {row_str}")
+            if reg.rows > 3:
+                click.echo(f"    ... ({reg.rows - 3} more rows)")
+            click.echo()
+
+
+@main.command()
+@click.argument("file1", type=click.Path(exists=True))
+@click.argument("file2", type=click.Path(exists=True))
+def bindiff(file1, file2):
+    """Compare two binary (.bin) ECU dump files."""
+    a = parse_binary(file1)
+    b = parse_binary(file2)
+
+    click.echo(f"File A: {a.source_path}")
+    click.echo(f"  {a.identity.variant} — {a.identity.software_id} ({a.identity.homologation})")
+    click.echo(f"File B: {b.source_path}")
+    click.echo(f"  {b.identity.variant} — {b.identity.software_id} ({b.identity.homologation})")
+    click.echo()
+
+    diffs = compare_binaries(a, b)
+    if not diffs:
+        click.echo(click.style("Files are identical.", fg="green"))
+        return
+
+    for d in diffs:
+        if d["type"] == "size_mismatch":
+            click.echo(click.style(
+                f"Size mismatch: {d['a_size']} vs {d['b_size']} bytes",
+                fg="red", bold=True))
+        elif d["type"] == "byte_diff_summary":
+            click.echo(f"Total bytes changed: {d['total_changed']:,}")
+            click.echo(f"Regions: {d['region_count']}")
+            click.echo()
+            for start, end, count in d["regions"][:30]:
+                size = end - start + 1
+                click.echo(f"  0x{start:05X}-0x{end:05X}  ({size:6,} bytes, {count:5,} changed)")
+            if len(d["regions"]) > 30:
+                click.echo(f"  ... and {len(d['regions']) - 30} more regions")
+        elif d["type"] == "identity_diff":
+            click.echo(click.style(
+                f"  {d['field']}: {d['a']} -> {d['b']}", fg="yellow"))
+    click.echo()
 
 
 if __name__ == "__main__":
