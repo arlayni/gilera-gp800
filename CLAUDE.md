@@ -1,138 +1,130 @@
-# CLAUDE.md
+# Gilera GP800 — ECU Diagnostics & Safety-Critical Knowledge Base
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Motorcycle ECU diagnostiek en herstel voor een Gilera GP800 met scrambled Magneti Marelli IAW 5AM.
 
-## Project Overview
+## 1. Wat is dit?
 
-**Gilera GP800 ECU Diagnostics** — A safety-critical knowledge base and tooling system for diagnosing and recovering a Gilera GP800 motorcycle with a scrambled ECU (Magneti Marelli IAW 5AM). The bike was incorrectly tuned using ChatGPT-generated map values, resulting in dangerous symptoms.
+Safety-critical kennisbank + Python CLI tool voor ECU map analyse, validatie, en vergelijking. 7 sub-agents met Safety Guard VETO authority.
 
-**Status:** Knowledge base complete, Python CLI tool implemented, Claude Code skill framework designed (implementation pending).
+## Context Management
+**NOOIT boven 50% context** — compact proactief bij ~40-50%. Bij 50%+ → onmiddellijk registreren, loggen, /compact, /clear. Geldt voor main session EN alle agents/subagents.
 
-## Safety-First Principle
+## 2. Hoe draai je het?
 
-**CRITICAL:** This project deals with motorcycle ECU flashing. Incorrect maps can destroy the engine or cause rider injury. The core design principle is: **make it harder to flash a dangerous map than a safe one.**
+```bash
+# CLI tool installeren
+cd ~/Gilera\ GP800/gp800-tool
+pip install --user --no-build-isolation -e ".[dev]"
 
-### Flash Blockers (ABSOLUTE — no override)
+# Commands
+gp800-tool parse <file>              # Map file samenvatten
+gp800-tool validate <file>           # Pre-flash safety validatie (.txt map files)
+gp800-tool quickcheck <file>         # GO/NO-GO (GREEN/YELLOW/RED) (.txt map files)
+gp800-tool compare <file1> <file2>   # Cell-by-cell vergelijking
+gp800-tool bindump <file.bin>        # Binary ECU dump inspecteren (.bin files)
+gp800-tool bindiff <file1> <file2>   # Binary diff tussen twee .bin files
 
-These conditions MUST prevent any map from being flashed:
-1. Fuel map contains all-zero row (lean seizure)
-2. Fuel map contains all-255 row (hydro-lock)
-3. Ignition advance > 45 deg or < -10 deg at any cell
-4. Lambda target > 1.05 at WOT or < 0.82 at any cell
-5. Injector dead-time not monotonically decreasing with voltage
-6. Checksum mismatch after edit
-7. File size != expected IAW 5AM binary size
-8. No verified backup exists
-9. Immobilizer PIN not confirmed available
-10. Mechanical pre-check not passed
-11. Battery voltage < 12.0V at time of flash
+# Opmerking: validate/quickcheck werken op .txt map files.
+#             bindump/bindiff werken op .bin (raw ECU binary) files.
 
-## Architecture
+# Tests
+pytest
 
+# Beschikbare slash commands
+/plan [taak]        — Research eerst, dan uitvoeren
+/gsd [project]      — Fased werk met voortgang tracking
+/ralph [prd.json]   — Autonome batch-executie
+/review [scope]     — Code review (security + quality)
+/status             — System health check
+```
+
+## 3. Regels & Principes
+
+### SAFETY-FIRST (ABSOLUUT)
+**Incorrect maps kunnen de motor vernietigen of de berijder verwonden.**
+
+### 11 Flash Blockers (GEEN override mogelijk)
+1. Fuel map bevat all-zero row (lean seizure)
+2. Fuel map bevat all-255 row (hydro-lock)
+3. Ignition advance > 45° of < -10° bij enige cel
+4. Lambda target > 1.05 bij WOT of < 0.82 bij enige cel
+5. Injector dead-time niet monotoon dalend met voltage
+6. Checksum mismatch na edit
+7. File size ≠ verwachte IAW 5AM binary size
+8. Geen geverifieerde backup aanwezig
+9. Immobilizer PIN niet bevestigd beschikbaar
+10. Mechanische pre-check niet gepasseerd
+11. Batterijspanning < 12.0V bij flash
+
+### Key Rules
+1. **Diagnose voor tuning** — nooit blind tunen
+2. **Mechanisch voor ECU** — sluit mechanische issues eerst uit
+3. **Backup voor flash** — altijd, geen uitzonderingen
+4. **Stock eerst** — start vanuit known-good baseline
+5. **Nooit immobilizer data delen** — codes zijn geredacteerd
+6. **Schemas zijn autoriteit** — `safe-ranges.json` is single source of truth
+
+### Tuning Filosofie
+Stock eerst, conservatieve wijzigingen (max 5% per stap).
+
+## 4. Edge Cases & Bekende Issues
+
+- **Huidige staat: DO NOT RIDE** (Severity 5) — roodgloeiende uitlaat, vlammen, stalling
+- **Originele ECU:** Magneti Marelli IAW 5AM (defect — zijstandschakelaar)
+- **Huidige ECU:** Aprilia SRV850 IAW 5AM (elektrisch compatibel)
+- **Communicatie:** K-Line ISO 9141-2 @ 10.4 kbaud (NIET standaard OBD2)
+- **Immobilizer:** REDACTED — codes nooit in output
+
+## 5. Hoe we werken
+
+### Architectuur
 ```
 knowledge/
-├── reference/        # Static technical facts (engine, ECU, fuel, ignition, sensors)
-├── procedures/       # Step-by-step diagnostic and tuning workflows
-└── schemas/          # JSON schemas — single source of truth for all limits and specs
+├── reference/        # Statische technische feiten
+├── procedures/       # Stap-voor-stap workflows
+└── schemas/          # JSON schemas (single source of truth)
 
-my-bike/              # Owner-specific: current state, history, modifications, measurements
-
-map-files/
-├── original/         # Unmodified ECU dumps
-├── stock/            # OEM baseline maps
-├── working/          # Current analysis copies
-└── modified/         # Modified maps with change records
-
-gp800-tool/           # Python CLI tool (setuptools package)
-├── src/gp800_tool/   # Parser, validator, comparator, exporter, CLI
-└── tests/            # pytest test suite
+my-bike/              # Owner-specifiek: staat, historie, metingen
+map-files/            # original/, stock/, working/, modified/
+gp800-tool/           # Python CLI (setuptools package)
 ```
 
-## The Bike
+### Tech Stack
+- **Knowledge:** Markdown + JSON schemas
+- **CLI:** Python 3.10+, Click, setuptools
+- **Testing:** pytest met fixtures
+- **Safety:** Expliciete severity levels (INFO/WARNING/BLOCKER)
 
-- **Model:** Gilera GP800 (V-twin, 839cc, 75HP, twin-spark)
-- **Original ECU:** Magneti Marelli IAW 5AM (failed — side-stand switch fault)
-- **Current ECU:** Aprilia SRV850 IAW 5AM (electrically compatible)
-- **Communication:** K-Line ISO 9141-2 @ 10.4 kbaud (NOT standard OBD2)
-- **Current state:** DO NOT RIDE (Severity 5) — red-hot exhaust, flames, stalling, rough idle
+### Coding Conventions
+- Python: type hints, dataclasses, pathlib.Path, f-strings
+- Git: conventional commits (feat/docs/fix)
+- Tuning: stock first, max 5% per stap
 
-## Commands
+---
 
-### Run CLI tool
-```bash
-cd ~/Desktop/"Gilera GP800"/gp800-tool
-pip install -e .
-gp800-tool parse <file>           # Parse and summarize map file
-gp800-tool validate <file>        # Run pre-flash safety validation
-gp800-tool quickcheck <file>      # Quick go/no-go (GREEN/YELLOW/RED)
-gp800-tool compare <file1> <file2> # Cell-by-cell comparison
-gp800-tool export <file> <output>  # Export to .txt format
-```
+## Inventaris
 
-### Run tests
-```bash
-cd ~/Desktop/"Gilera GP800"/gp800-tool
-pip install -e ".[dev]"
-pytest
-```
+### Agents (7) — `.claude/agents/`
+| Agent | Rol | Bijzonder |
+|-------|-----|-----------|
+| **safety-guard** | Pre-flash validatie, risk scoring | **VETO AUTHORITY** |
+| flash-monitor | Post-flash checklist, rollback | |
+| diagnostician | Symptoomanalyse, root cause | |
+| ecu-engineer | Map analyse, tuning aanbevelingen | |
+| mechanical-advisor | Mechanische checks, pre-flight | |
+| knowledge-service | Schema queries, documentatie | |
+| tuning-advisor | Incrementeel tuning advies | |
 
-## Tech Stack
-
-- **Knowledge base:** Markdown + JSON schemas
-- **CLI tool:** Python 3.10+, Click CLI framework, setuptools
-- **Dependencies:** `click>=8.0`, `pytest>=7.0` (dev), `matplotlib>=3.5` (optional viz)
-- **Testing:** pytest with fixtures in conftest.py
-- **Version control:** Git
-
-## Key Schemas (knowledge/schemas/)
-
-| Schema | Purpose |
-|--------|---------|
-| safe-ranges.json | Hard limits for all tunable parameters — the safety authority |
-| map-definitions.json | Map names, axes, dimensions |
-| sensor-specs.json | All sensor specifications (20.5KB) |
+### Key Schemas
+| Schema | Doel |
+|--------|------|
+| safe-ranges.json | Hard limits — de safety authority |
+| map-definitions.json | Map namen, assen, dimensies |
+| sensor-specs.json | Alle sensor specificaties |
 | error-codes.json | IAW 5AM DTC codes |
-| immobilizer.json | REDACTED — key codes never shared |
-| diagnostic-report.schema.json | Inter-agent communication protocol |
+| immobilizer.json | REDACTED |
 
-## Python Code Structure (gp800-tool/src/gp800_tool/)
-
-| Module | Purpose |
-|--------|---------|
-| cli.py | Click-based CLI with 6 commands |
-| models.py | Dataclasses: MapTable, MapFile, ValidationResult, ComparisonCell |
-| parser.py | IAW5xReader/Writer .txt format parser |
-| schemas.py | Schema loader — reads safe-ranges.json as source of truth |
-| validator.py | Pre-flash safety validation engine |
-| comparator.py | Cell-by-cell map comparison with severity ranking |
-| exporter.py | Export to IAW5xWriter-compatible .txt format |
-
-## Expert Agent System (Planned)
-
-```
-COORDINATOR (router, workflow enforcer)
-├── SafetyGuard (VETO AUTHORITY — validation, risk scoring)
-├── FlashMonitor (post-flash checklist, manual rollback)
-├── Diagnostician (symptom analysis, root cause)
-├── ECU Engineer (map analysis, tuning recommendations)
-├── Mechanical Advisor (pre-flight checks, mechanical issues)
-└── Knowledge Service (schema queries, documentation)
-```
-
-## Coding Conventions
-
-- **Python:** Type hints, dataclasses, pathlib.Path, modern f-strings
-- **Testing:** pytest with fixtures; sample data in conftest.py
-- **Git commits:** Conventional format (feat/docs/fix prefixes)
-- **Documentation:** Markdown with tables and code blocks
-- **Safety:** Explicit severity levels (INFO, WARNING, BLOCKER) in all validation
-- **Tuning philosophy:** Stock first, conservative changes (max 5% per step)
-
-## Key Rules
-
-1. **Diagnose before tuning** — never tune blindly
-2. **Mechanical before ECU** — rule out mechanical issues first
-3. **Backup before flash** — always, no exceptions
-4. **Stock first** — start from known-good baseline
-5. **Never share immobilizer data** — codes are redacted in all files
-6. **Schemas are the authority** — safe-ranges.json is the single source of truth for limits
+### Planning
+- `planning/roadmap.md` — Project fases en afhankelijkheden
+- `planning/state.md` — Voortgang per fase/taak
+- Gebruik `/gsd` voor fased werk, `/ralph` voor batch-executie

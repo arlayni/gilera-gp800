@@ -1,0 +1,6 @@
+Drawing: CM088002   
+Hardware: IAW5AMHW610
+Omologation: 5AME2A
+Software: 4225GAA2   
+Tester: 030259999
+Date: 2013.09.07

@@ -21,11 +21,24 @@
 - **Flames from exhaust** observed when idling at home
 - These symptoms are classic indicators of **excessively rich fuel mixture** (running too much fuel, not enough air)
 
+## ECU & Map Status
+
+**Huidige ECU:** Aprilia SRV850 IAW 5AM (vervanging voor defecte GP800 ECU)
+- **Uitlezing:** `map-files/working/vandaaggp800.bin` (SHA256: `481bdc70...`)
+- **Software:** 34225GAA2 | **Homologatie:** 5AME2A
+
+**Originele GP800 ECU:** Defect — zijstandschakelaar-fout heeft de ECU gewist. Originele dump is verloren.
+
+**Referentie:** `map-files/original/Gilera_GP800_original.bin` — stock GP800 dump (niet van deze motor)
+
+**Gemodificeerde maps (V2–V6.1):** Verloren. De bestanden die onder die namen bestonden waren allemaal identieke kopieën van de stock GP800 dump — de echte modificaties zijn niet bewaard gebleven.
+
 ## Root Cause Assessment
 
 **Primary cause:** Scrambled ECU maps from failed ChatGPT-assisted tuning attempt
 - No backup of pre-ChatGPT maps available
 - Maps require complete reconstruction or baseline replacement
+- Original GP800 ECU wiped itself (side-stand switch fault) — original dump lost
 
 **Secondary potential issues:**
 - Cardan shaft replacement may have shifted power distribution or torque curve expectations

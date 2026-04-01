@@ -1,20 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cd /c/Users/arlay/Desktop/\"Gilera GP800\")",
-      "Bash(python3 -c \"import json; json.load\\(open\\(''knowledge/schemas/safe-ranges.json''\\)\\); print\\(''safe-ranges.json: VALID''\\)\")",
-      "Bash(for f:*)",
-      "Bash(do node:*)",
-      "Bash(echo \"FAIL: $f\")",
-      "Bash(done)",
-      "Bash(pip install:*)",
-      "Bash(py -m pip install -e \".[dev]\")",
-      "Bash(wc:*)",
-      "Bash(ls knowledge/procedures/*.md)",
-      "Bash(ls knowledge/reference/*.md)",
-      "Bash(ls my-bike/*.md)",
-      "Bash(python -m gp800_tool --help)",
-      "Bash(python:*)"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Skill(*)",
+      "Agent(*)",
+      "WebSearch(*)",
+      "WebFetch(*)"
     ]
   }
 }

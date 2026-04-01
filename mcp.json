@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Documentation lookup for Python, Click, pytest"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem",
+        "/home/claudepc/Gilera GP800",
+        "/home/claudepc/.claude"
+      ],
+      "disabled": true,
+      "description": "Redundant — Claude Code has native Read/Write/Edit/Glob/Grep"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "disabled": true,
+      "description": "Redundant — Opus 4.6 has native deep reasoning"
+    }
+  }
+}
