@@ -27,6 +27,14 @@ def validate_map_file(map_file: MapFile, safe_ranges: dict) -> list[ValidationRe
         if "lambda" in name_lower:
             results.extend(_check_lambda_map(table, safe_ranges))
 
+        # Rev limiter checks
+        if "rev" in name_lower and "limit" in name_lower:
+            results.extend(_check_rev_limiter(table, safe_ranges))
+
+        # Injector dead-time checks
+        if "dead" in name_lower and "time" in name_lower:
+            results.extend(_check_injector_dead_time(table, safe_ranges))
+
     return results
 
 
@@ -140,6 +148,60 @@ def _check_lambda_map(table: MapTable, ranges: dict) -> list[ValidationResult]:
             passed=True,
             check_name="lambda_map_check",
             message=f"OK: {table.name} passed all lambda safety checks",
+        ))
+
+    return results
+
+
+def _check_rev_limiter(table: MapTable, ranges: dict) -> list[ValidationResult]:
+    """Check rev limiter is within safe range."""
+    results = []
+    max_rpm = get_hard_limit(ranges, "rev_limiter", "max")
+
+    if max_rpm:
+        for r_idx, row in enumerate(table.data):
+            for c_idx, val in enumerate(row):
+                if val > max_rpm:
+                    results.append(ValidationResult(
+                        passed=False,
+                        check_name="rev_limiter_max",
+                        message=f"BLOCKER: {table.name} cell [{r_idx},{c_idx}] = {val} RPM exceeds max {max_rpm} RPM (valve float risk)",
+                        severity="BLOCKER",
+                        cell_references=[f"{table.name}[{r_idx},{c_idx}]"],
+                    ))
+
+    if not results:
+        results.append(ValidationResult(
+            passed=True,
+            check_name="rev_limiter_check",
+            message=f"OK: {table.name} passed rev limiter check",
+        ))
+
+    return results
+
+
+def _check_injector_dead_time(table: MapTable, ranges: dict) -> list[ValidationResult]:
+    """Check injector dead-time is monotonically decreasing with voltage."""
+    results = []
+
+    # Each row should be monotonically decreasing (higher voltage = less dead time)
+    for r_idx, row in enumerate(table.data):
+        for c_idx in range(len(row) - 1):
+            if row[c_idx] < row[c_idx + 1]:
+                results.append(ValidationResult(
+                    passed=False,
+                    check_name="dead_time_monotonic",
+                    message=f"BLOCKER: {table.name} row {r_idx} not monotonically decreasing "
+                            f"(col {c_idx}={row[c_idx]}, col {c_idx+1}={row[c_idx+1]})",
+                    severity="BLOCKER",
+                ))
+                break  # One per row is enough
+
+    if not results:
+        results.append(ValidationResult(
+            passed=True,
+            check_name="dead_time_check",
+            message=f"OK: {table.name} passed dead-time monotonicity check",
         ))
 
     return results

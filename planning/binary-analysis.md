@@ -62,13 +62,19 @@ Located by searching for `b"IAW5AM"` marker (found at ~0x47FB8):
 | 0x4E41A-0x4E5C8 | 430 bytes | Post-idle area |
 | 0x4F155-0x4F319 | 452 bytes | Late calibration area |
 
+## Resolved Questions
+1. **Front/rear split:** CONFIRMED — 50 rows = 25 front (0x4D106) + 25 rear (0x4D4EE)
+2. **8-bit vs 16-bit storage:** CONFIRMED 16-bit LE for fuel tables
+3. **Round-trip:** VERIFIED — bin2txt + txt2bin produces identical binary
+
 ## Open Questions
-1. **Front/rear split:** Is 0x4D106 one table (50 rows) or two (25+25)? Value pattern analysis needed.
-2. **Ignition tables:** Not yet located. Likely in 0x4A6C3-0x4AB63 region. Values would be 0-500 (degrees × 10).
-3. **Lambda target table:** Not yet located.
-4. **Y-axis for fuel table:** Which TPS axis (12, 17, or 9-point) pairs with this table?
-5. **8-bit vs 16-bit storage:** Confirmed 16-bit LE for fuel table.
-6. **Checksum algorithm:** Not yet determined. Location and method unknown.
+1. **Ignition tables:** NOT FOUND in expected format. Findings:
+   - Region 0x4A6C3-0x4AB63: GP800 has [255,56] repeating pattern or all-zeros; SRV850 has 8-bit values 90-180 (could be timing × 10). Different ECU variants use different offsets.
+   - Region 0x49510: 13x20 table with values 0-40 (degrees), but mostly flat at 20° — likely a correction table, not main ignition map.
+   - **Conclusion:** Main ignition maps may be stored in a non-obvious format or at variant-specific offsets. Need IAW5Writer .txt export with named tables to confirm offsets.
+2. **Lambda target table:** Not yet located.
+3. **Y-axis for fuel table:** Unknown — which TPS axis pairs with the 25-row fuel tables.
+4. **Checksum algorithm:** Not yet determined. Location and method unknown.
 
 ## DDG Format
 - **Encrypted:** Entropy 7.82 bits/byte (near random) vs 5.39 for raw .bin

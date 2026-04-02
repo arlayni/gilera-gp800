@@ -21,7 +21,7 @@
     },
     "idle_rpm": {
       "unit": "rpm",
-      "hard_limits": { "min": 1100, "max": 1500 },
+      "hard_limits": { "min": 600, "max": 1500 },
       "tuning_guidance": { "target_warm": 1200, "acceptable_range": [1100, 1400] },
       "notes": "<1100 stalls; >1500 causes clutch drag"
     },

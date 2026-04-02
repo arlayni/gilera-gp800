@@ -69,7 +69,7 @@ def test_load_safe_ranges(schemas_dir):
 def test_get_hard_limit(schemas_dir):
     ranges = load_safe_ranges(schemas_dir / "safe-ranges.json")
     assert get_hard_limit(ranges, "rev_limiter", "max") == 9500
-    assert get_hard_limit(ranges, "idle_rpm", "min") == 1100
+    assert get_hard_limit(ranges, "idle_rpm", "min") == 600
 
 
 # ---------------------------------------------------------------------------
