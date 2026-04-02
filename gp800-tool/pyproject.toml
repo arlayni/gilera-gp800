@@ -19,5 +19,8 @@ dev = ["pytest>=7.0", "pyserial>=3.5"]
 [project.scripts]
 gp800-tool = "gp800_tool.cli:main"
 
+[project.gui-scripts]
+gp800-gui = "gp800_tool.gui:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

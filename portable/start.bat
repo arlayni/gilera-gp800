@@ -3,6 +3,9 @@ REM GP800 Tool — Start Session (Windows)
 REM Opens Claude Code in the GP800 project directory.
 REM Claude Code can then run gp800-tool commands directly.
 
+REM Add Python Scripts to PATH
+set "PATH=%APPDATA%\Python\Python312\Scripts;%APPDATA%\Python\Python311\Scripts;%APPDATA%\Python\Python310\Scripts;%PATH%"
+
 echo ============================================
 echo  GP800 Tool - Live Session
 echo ============================================

@@ -20,15 +20,21 @@ if errorlevel 1 (
 echo [OK] Python found
 python --version
 
+REM Add Python user Scripts to PATH for this session
+for /f "delims=" %%i in ('python -c "import site; print(site.getusersitepackages().replace(chr(92)+chr(39)lib'+chr(92)+'site-packages','Scripts'))"') do set "PYSCRIPTS=%%i"
+if not defined PYSCRIPTS (
+    for /f "delims=" %%i in ('python -c "import os,sys; print(os.path.join(os.path.dirname(sys.executable),'Scripts'))"') do set "PYSCRIPTS=%%i"
+)
+set "PATH=%PYSCRIPTS%;%APPDATA%\Python\Python312\Scripts;%APPDATA%\Python\Python311\Scripts;%APPDATA%\Python\Python310\Scripts;%PATH%"
+echo [OK] Python Scripts added to PATH
+
 REM Install dependencies
 echo.
 echo Installing gp800-tool dependencies...
 cd /d "%~dp0gp800-tool"
-pip install -e ".[kline]" --quiet
+pip install --user -e ".[kline]" --quiet --no-warn-script-location
 if errorlevel 1 (
-    echo [ERROR] Failed to install dependencies.
-    pause
-    exit /b 1
+    pip install -e ".[kline]" --quiet --no-warn-script-location
 )
 cd /d "%~dp0"
 
@@ -37,15 +43,20 @@ echo [OK] gp800-tool installed
 REM Verify
 echo.
 echo Verifying installation...
-gp800-tool --version
+gp800-tool --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] gp800-tool not found in PATH.
-    echo Try: python -m gp800_tool --help
-    pause
-    exit /b 1
+    python -m gp800_tool --version >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] gp800-tool not found.
+        pause
+        exit /b 1
+    )
+    echo [OK] gp800-tool works (via python -m gp800_tool)
+    echo.
+    echo NOTE: Use "python -m gp800_tool" instead of "gp800-tool"
+) else (
+    echo [OK] gp800-tool works!
 )
-
-echo [OK] gp800-tool works!
 
 REM Check Claude Code
 echo.
