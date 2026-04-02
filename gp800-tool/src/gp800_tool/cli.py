@@ -633,5 +633,141 @@ def live(port, interval):
         ecu.disconnect()
 
 
+@main.command("eeprom")
+@click.argument("port", type=str)
+@click.argument("output", type=click.Path())
+@click.option("--write", "write_file", type=click.Path(exists=True), default=None,
+              help="Write .eep file back to ECU EEPROM")
+def eeprom(port, output, write_file):
+    """Read or write the ECU EEPROM (2KB — CO trim, TPS, immobilizer, VIN).
+
+    Read:  gp800-tool eeprom /dev/ttyUSB0 backup.eep
+    Write: gp800-tool eeprom /dev/ttyUSB0 backup.eep --write modified.eep
+
+    WARNING: Incorrect EEPROM writes can lock out the immobilizer.
+    Always read and backup BEFORE writing.
+    """
+    from .ecucomm import ECUConnection
+
+    def progress(current, total, msg):
+        pct = int(100 * current / total) if total > 0 else 0
+        click.echo(f"\r  [{pct:3d}%] {msg}".ljust(60), nl=False)
+
+    ecu = ECUConnection(port)
+    try:
+        ecu.connect()
+        click.echo(click.style("Connected", fg="green"))
+        ecu.login()
+        click.echo(click.style("Authenticated", fg="green"))
+
+        if write_file:
+            # Safety: always read first
+            click.echo("Reading current EEPROM (backup) ...")
+            current = ecu.read_eeprom(progress_callback=progress)
+            click.echo()
+            Path(output).write_bytes(current)
+            click.echo(f"Backup saved to {output} ({len(current)} bytes)")
+
+            # Now write
+            new_data = Path(write_file).read_bytes()
+            if len(new_data) != 2048:
+                click.echo(click.style(f"ERROR: EEPROM file must be 2048 bytes, got {len(new_data)}", fg="red"))
+                sys.exit(1)
+
+            # Show what changed
+            diffs = sum(1 for a, b in zip(current, new_data) if a != b)
+            click.echo(f"Changes: {diffs} bytes differ")
+
+            if diffs == 0:
+                click.echo("No changes — skipping write.")
+                return
+
+            click.echo(click.style(
+                "WARNING: EEPROM contains immobilizer data. Incorrect writes can lock you out.",
+                fg="yellow", bold=True))
+            if not click.confirm("Proceed with EEPROM write?"):
+                click.echo("Aborted.")
+                return
+
+            click.echo("Writing EEPROM ...")
+            ecu.write_eeprom(new_data, progress_callback=progress)
+            click.echo()
+            click.echo(click.style("EEPROM write complete", fg="green"))
+        else:
+            # Read only
+            click.echo("Reading EEPROM ...")
+            data = ecu.read_eeprom(progress_callback=progress)
+            click.echo()
+            Path(output).write_bytes(data)
+            click.echo(f"Saved {len(data)} bytes to {output}")
+
+            # Show useful info
+            click.echo(f"  Hex dump (first 64 bytes):")
+            for i in range(0, min(64, len(data)), 16):
+                hex_str = " ".join(f"{b:02X}" for b in data[i:i+16])
+                ascii_str = "".join(chr(b) if 32 <= b < 127 else "." for b in data[i:i+16])
+                click.echo(f"    {i:04X}: {hex_str}  {ascii_str}")
+
+    except (ImportError, ConnectionError) as e:
+        click.echo(click.style(f"\nERROR: {e}", fg="red"))
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
+@main.command()
+@click.argument("port", type=str)
+@click.argument("output", type=click.Path())
+@click.option("--duration", "-d", default=60, help="Capture duration in seconds")
+def sniff(port, output, duration):
+    """Capture K-Line traffic for protocol reverse-engineering.
+
+    Run IAWDiag/JPDiag on the same serial port BEFORE starting this,
+    or use a Y-splitter cable to passively monitor traffic.
+
+    Logs all bytes with timestamps to OUTPUT file for analysis.
+    """
+    import time as _time
+
+    try:
+        import serial as _serial
+    except ImportError:
+        click.echo(click.style("ERROR: pyserial required. pip install pyserial", fg="red"))
+        sys.exit(1)
+
+    click.echo(f"Opening {port} at 10400 baud (passive monitor) ...")
+    click.echo(f"Capture duration: {duration}s — press Ctrl+C to stop early")
+    click.echo()
+
+    ser = _serial.Serial(port, 10400, timeout=0.1)
+    start = _time.time()
+    packets = []
+
+    try:
+        while _time.time() - start < duration:
+            data = ser.read(256)
+            if data:
+                ts = _time.time() - start
+                packets.append((ts, data))
+                hex_str = data.hex()
+                click.echo(f"  [{ts:7.3f}s] ({len(data):3d}b) {hex_str[:80]}")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        ser.close()
+
+    # Write capture file
+    with open(output, "w") as f:
+        f.write("# K-Line capture\n")
+        f.write(f"# Port: {port}\n")
+        f.write(f"# Duration: {_time.time() - start:.1f}s\n")
+        f.write(f"# Packets: {len(packets)}\n\n")
+        for ts, data in packets:
+            f.write(f"{ts:.6f} {data.hex()}\n")
+
+    click.echo(f"\nCaptured {len(packets)} packets to {output}")
+    click.echo("Analyze with: grep '31' capture.txt  (find RoutineControl commands)")
+
+
 if __name__ == "__main__":
     main()

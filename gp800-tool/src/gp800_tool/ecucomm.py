@@ -342,6 +342,94 @@ class ECUConnection:
             return payload[0]
         return None
 
+    def read_eeprom(self, progress_callback=None) -> bytes:
+        """Read full 2048-byte EEPROM (ST M95160) from ECU.
+
+        The EEPROM stores: CO trim, TPS learned value, immobilizer data,
+        VIN, fault snapshots. Accessible via K-Line using ReadMemoryByAddress.
+        Requires: connected + authenticated.
+        """
+        if not self.connected:
+            raise ConnectionError("Not connected to ECU")
+        if not self.authenticated:
+            self.login()
+
+        eeprom = bytearray()
+        block_size = 32  # Read 32 bytes at a time
+        total = 2048
+
+        for addr in range(0, total, block_size):
+            if progress_callback:
+                progress_callback(addr, total, f"EEPROM 0x{addr:04X}")
+
+            # ReadMemoryByAddress (0x23): addr_high, addr_low, size
+            addr_h = (addr >> 8) & 0xFF
+            addr_l = addr & 0xFF
+            msg = build_message(0x23, bytes([addr_h, addr_l, block_size]),
+                                source=TESTER_ADDR)
+            resp = self.kline.send_and_receive(msg, timeout=2.0)
+
+            parsed = parse_response(resp)
+            if parsed is None:
+                raise ConnectionError(f"EEPROM read failed at 0x{addr:04X}")
+
+            svc_id, payload = parsed
+            if svc_id != 0x63:  # Positive response to ReadMemoryByAddress
+                raise ConnectionError(
+                    f"EEPROM read error at 0x{addr:04X}: service 0x{svc_id:02X}")
+
+            eeprom.extend(payload)
+
+        if progress_callback:
+            progress_callback(total, total, "Complete")
+
+        return bytes(eeprom)
+
+    def write_eeprom(self, data: bytes, progress_callback=None) -> bool:
+        """Write full 2048-byte EEPROM back to ECU.
+
+        WARNING: Incorrect EEPROM data can lock out the immobilizer.
+        Always keep a backup of the original EEPROM before writing.
+        Requires: connected + authenticated.
+        """
+        if len(data) != 2048:
+            raise ValueError(f"EEPROM must be 2048 bytes, got {len(data)}")
+
+        if not self.connected:
+            raise ConnectionError("Not connected to ECU")
+        if not self.authenticated:
+            self.login()
+
+        block_size = 32
+        total = len(data)
+
+        for addr in range(0, total, block_size):
+            if progress_callback:
+                progress_callback(addr, total, f"EEPROM 0x{addr:04X}")
+
+            chunk = data[addr:addr + block_size]
+            addr_h = (addr >> 8) & 0xFF
+            addr_l = addr & 0xFF
+
+            # WriteMemoryByAddress (0x3D): addr_high, addr_low, size, data...
+            payload = bytes([addr_h, addr_l, len(chunk)]) + chunk
+            msg = build_message(0x3D, payload, source=TESTER_ADDR)
+            resp = self.kline.send_and_receive(msg, timeout=2.0)
+
+            parsed = parse_response(resp)
+            if parsed is None:
+                raise ConnectionError(f"EEPROM write failed at 0x{addr:04X}")
+
+            svc_id, _ = parsed
+            if svc_id != 0x7D:  # Positive response to WriteMemoryByAddress
+                raise ConnectionError(
+                    f"EEPROM write error at 0x{addr:04X}: service 0x{svc_id:02X}")
+
+        if progress_callback:
+            progress_callback(total, total, "Complete")
+
+        return True
+
     def disconnect(self) -> None:
         """Disconnect from ECU."""
         self.kline.close()
