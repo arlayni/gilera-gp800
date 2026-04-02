@@ -7,7 +7,7 @@ Motorcycle ECU diagnostiek en herstel voor een Gilera GP800 met scrambled Magnet
 Safety-critical kennisbank + Python CLI tool voor ECU map analyse, validatie, en vergelijking. 7 sub-agents met Safety Guard VETO authority.
 
 ## Context Management
-**NOOIT boven 50% context** — compact proactief bij ~40-50%. Bij 50%+ → onmiddellijk registreren, loggen, /compact, /clear. Geldt voor main session EN alle agents/subagents.
+**GEEN compactie — NOOIT.** Compactie vernietigt data. Bij hoge context → dump ALLES naar brein (brain.jsonl) + checkpoint → start nieuwe sessie. Het brein logt ELKE actie automatisch. Geldt voor main session EN alle agents/subagents.
 
 ## 2. Hoe draai je het?
 
