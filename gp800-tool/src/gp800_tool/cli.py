@@ -376,5 +376,262 @@ def txt2bin(txt_file, base_bin, output_bin):
             fg="yellow"))
 
 
+# --- K-Line / ECU Communication Commands ---
+
+@main.command()
+@click.argument("port", type=str)
+def connect(port):
+    """Connect to ECU via USB-KKL adapter and show ECU info.
+
+    PORT is the serial port (e.g., /dev/ttyUSB0 or COM3).
+    """
+    from .ecucomm import ECUConnection
+
+    click.echo(f"Connecting to {port} ...")
+    ecu = ECUConnection(port)
+    try:
+        info = ecu.connect()
+        click.echo(click.style("Connected!", fg="green"))
+        click.echo(f"  Software:  {info.software_id}")
+        click.echo(f"  Hardware:  {info.hardware_id}")
+        click.echo(f"  Raw data:  {info.raw_data.hex()}")
+    except ImportError as e:
+        click.echo(click.style(f"ERROR: {e}", fg="red"))
+        sys.exit(1)
+    except ConnectionError as e:
+        click.echo(click.style(f"Connection failed: {e}", fg="red"))
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
+@main.command("read")
+@click.argument("port", type=str)
+@click.argument("output", type=click.Path())
+def read_ecu(port, output):
+    """Read full ECU firmware to a .bin file.
+
+    PORT is the serial port. OUTPUT is the .bin file to write.
+    Automatically validates the dump after reading.
+    """
+    from .ecucomm import ECUConnection
+
+    def progress(current, total, msg):
+        pct = int(100 * current / total) if total > 0 else 0
+        click.echo(f"\r  [{pct:3d}%] {msg}".ljust(60), nl=False)
+
+    click.echo(f"Connecting to {port} ...")
+    ecu = ECUConnection(port)
+    try:
+        info = ecu.connect()
+        click.echo(click.style(f"Connected: {info.software_id}", fg="green"))
+
+        click.echo("Authenticating ...")
+        ecu.login()
+        click.echo(click.style("Authenticated", fg="green"))
+
+        click.echo("Reading firmware ...")
+        firmware = ecu.read_firmware(progress_callback=progress)
+        click.echo()
+
+        # Save to file
+        out_path = Path(output)
+        out_path.write_bytes(firmware)
+        click.echo(f"Saved {len(firmware):,} bytes to {out_path}")
+
+        # Validate
+        from .binary_parser import calculate_checksum
+        csum = calculate_checksum(firmware)
+        click.echo(f"Cal Checksum: 0x{csum:04X}")
+
+        # Quick validation
+        dump = parse_binary(output)
+        click.echo(f"Variant: {dump.identity.variant}")
+        click.echo(f"Named tables: {len([r for r in dump.regions if not r.name.startswith('table_')])}")
+
+    except (ImportError, ConnectionError) as e:
+        click.echo(click.style(f"\nERROR: {e}", fg="red"))
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
+@main.command()
+@click.argument("port", type=str)
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--schemas", type=click.Path(exists=True), default=None)
+@click.option("--force", is_flag=True, help="Skip interactive confirmation")
+def flash(port, file, schemas, force):
+    """Flash a validated .bin file to the ECU.
+
+    SAFETY: Runs ALL validation checks before flashing.
+    Will REFUSE to flash if any BLOCKER is found.
+
+    PORT is the serial port. FILE is the .bin to flash.
+    """
+    from .ecucomm import ECUConnection
+    from .validator import validate_binary
+
+    # Step 1: Validate BEFORE connecting
+    click.echo("Step 1: Pre-flash validation ...")
+    schemas_dir = _resolve_schemas(schemas)
+    ranges = load_safe_ranges(schemas_dir / "safe-ranges.json")
+    dump = parse_binary(file)
+    results = validate_binary(dump, ranges)
+
+    blockers = [r for r in results if r.severity == "BLOCKER"]
+    warnings = [r for r in results if r.severity == "WARNING"]
+
+    if blockers:
+        click.echo(click.style(f"\n  BLOCKED: {len(blockers)} safety violation(s):", fg="red", bold=True))
+        for r in blockers:
+            click.echo(click.style(f"    {r.message}", fg="red"))
+        click.echo(click.style("\n  FLASH REFUSED — fix the issues above first.", fg="red", bold=True))
+        sys.exit(1)
+
+    if warnings:
+        click.echo(click.style(f"  {len(warnings)} warning(s):", fg="yellow"))
+        for r in warnings[:5]:
+            click.echo(click.style(f"    {r.message}", fg="yellow"))
+        if len(warnings) > 5:
+            click.echo(f"    ... and {len(warnings) - 5} more")
+
+    click.echo(click.style("  Validation: PASSED", fg="green"))
+
+    # Step 2: File info
+    click.echo(f"\nStep 2: File info")
+    click.echo(f"  File:     {file}")
+    click.echo(f"  Variant:  {dump.identity.variant}")
+    click.echo(f"  Software: {dump.identity.software_id}")
+    click.echo(f"  Size:     {dump.file_size:,} bytes")
+    click.echo(f"  Checksum: 0x{dump.cal_checksum:04X}")
+
+    # Step 3: Confirmation
+    if not force:
+        click.echo(click.style(
+            "\n  WARNING: Flashing incorrect firmware can DESTROY the engine.",
+            fg="yellow", bold=True))
+        click.echo("  Ensure battery is >12.0V and stable.")
+        if not click.confirm("  Proceed with flash?"):
+            click.echo("  Aborted.")
+            return
+
+    # Step 4: Flash
+    def progress(current, total, msg):
+        pct = int(100 * current / total) if total > 0 else 0
+        click.echo(f"\r  [{pct:3d}%] {msg}".ljust(60), nl=False)
+
+    click.echo(f"\nStep 3: Connecting to {port} ...")
+    ecu = ECUConnection(port)
+    try:
+        ecu.connect()
+        click.echo(click.style("  Connected", fg="green"))
+
+        click.echo("  Authenticating ...")
+        ecu.login()
+        click.echo(click.style("  Authenticated", fg="green"))
+
+        click.echo("  Flashing firmware (DO NOT disconnect power!) ...")
+        firmware = Path(file).read_bytes()
+        ecu.write_firmware(firmware, progress_callback=progress)
+        click.echo()
+
+        click.echo(click.style("\n  FLASH COMPLETE — Turn ignition OFF, wait 10 seconds, then restart.",
+                               fg="green", bold=True))
+    except (ImportError, ConnectionError) as e:
+        click.echo(click.style(f"\n  FLASH ERROR: {e}", fg="red", bold=True))
+        click.echo("  If flash was interrupted, the ECU may need recovery.")
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
+@main.command()
+@click.argument("port", type=str)
+@click.option("--clear", is_flag=True, help="Clear all DTCs after reading")
+def dtc(port, clear):
+    """Read (and optionally clear) Diagnostic Trouble Codes.
+
+    PORT is the serial port (e.g., /dev/ttyUSB0 or COM3).
+    """
+    from .ecucomm import ECUConnection
+
+    ecu = ECUConnection(port)
+    try:
+        ecu.connect()
+        click.echo(click.style("Connected", fg="green"))
+
+        dtcs = ecu.read_dtcs()
+        if not dtcs:
+            click.echo(click.style("No DTCs stored", fg="green"))
+        else:
+            click.echo(f"Found {len(dtcs)} DTC(s):")
+            for d in dtcs:
+                click.echo(f"  {d}")
+
+        if clear:
+            if ecu.clear_dtcs():
+                click.echo(click.style("DTCs cleared", fg="green"))
+            else:
+                click.echo(click.style("Failed to clear DTCs", fg="red"))
+
+    except (ImportError, ConnectionError) as e:
+        click.echo(click.style(f"ERROR: {e}", fg="red"))
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
+@main.command()
+@click.argument("port", type=str)
+@click.option("--interval", "-i", default=1.0, help="Update interval in seconds")
+def live(port, interval):
+    """Stream live sensor data from ECU.
+
+    PORT is the serial port. Press Ctrl+C to stop.
+    """
+    from .ecucomm import ECUConnection
+
+    # Known PIDs for IAW 5AM (to be confirmed/expanded)
+    pids = [
+        (0x0C, "RPM", "rpm", 1),
+        (0x11, "TPS", "%", 1),
+        (0x05, "Coolant", "°C", 1),
+        (0x14, "Lambda", "", 0.01),
+    ]
+
+    ecu = ECUConnection(port)
+    try:
+        ecu.connect()
+        click.echo(click.style("Connected — streaming live data (Ctrl+C to stop)\n", fg="green"))
+
+        # Print header
+        header = " | ".join(f"{name:>10s}" for _, name, _, _ in pids)
+        click.echo(f"  {header}")
+        click.echo("  " + "-" * len(header))
+
+        while True:
+            values = []
+            for pid, name, unit, scale in pids:
+                raw = ecu.read_live_data(pid)
+                if raw is not None:
+                    val = raw * scale
+                    values.append(f"{val:10.1f}")
+                else:
+                    values.append(f"{'---':>10s}")
+
+            line = " | ".join(values)
+            click.echo(f"\r  {line}", nl=False)
+            time.sleep(interval)
+
+    except KeyboardInterrupt:
+        click.echo("\n\nStopped.")
+    except (ImportError, ConnectionError) as e:
+        click.echo(click.style(f"ERROR: {e}", fg="red"))
+        sys.exit(1)
+    finally:
+        ecu.disconnect()
+
+
 if __name__ == "__main__":
     main()

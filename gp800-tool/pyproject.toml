@@ -12,8 +12,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+kline = ["pyserial>=3.5"]
 viz = ["matplotlib>=3.5"]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "pyserial>=3.5"]
 
 [project.scripts]
 gp800-tool = "gp800_tool.cli:main"
