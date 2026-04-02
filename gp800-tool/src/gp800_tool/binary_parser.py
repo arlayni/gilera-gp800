@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 IAW5AM_BIN_SIZE = 327680  # 320KB standard flash size
+IAW5AM_CAL_START = 0x4000  # Calibration area start (checksummed region)
+IAW5AM_CAL_END = 0x4FFFE  # Calibration area end (inclusive, last byte before 0x50000)
 
 # --- Known table definitions (reverse-engineered from real dumps) ---
 # Each entry: (name, data_offset, cols, rows, x_axis_offset, value_type)
@@ -124,8 +126,9 @@ class BinaryDump:
     """Complete analysis of an IAW 5AM binary file."""
     source_path: str
     file_size: int
-    checksum: str
+    checksum: str  # SHA256 of full file
     identity: ECUIdentity
+    cal_checksum: int = 0  # IAW 5AM 16-bit calibration checksum
     axes: list[AxisBreakpoints] = field(default_factory=list)
     regions: list[BinaryRegion] = field(default_factory=list)
     raw: bytes = field(default=b"", repr=False)
@@ -454,6 +457,23 @@ def scan_calibration_area(data: bytes) -> tuple[list[AxisBreakpoints], list[Bina
     return all_axes, all_tables
 
 
+def calculate_checksum(data: bytes) -> int:
+    """Calculate IAW 5AM calibration checksum.
+
+    Simple 16-bit wrapping addition over the calibration area
+    (0x4000 to 0x4FFFE). The checksum is NOT stored in the binary —
+    it is transmitted during the KWP2000 flash routine.
+
+    Source: denandz/5am_util (GitHub/Codeberg)
+    """
+    if len(data) < IAW5AM_CAL_END + 2:
+        return 0
+    total = 0
+    for i in range(IAW5AM_CAL_START, IAW5AM_CAL_END, 2):
+        total += struct.unpack_from("<H", data, i)[0]
+    return total & 0xFFFF
+
+
 def parse_binary(path: Path | str) -> BinaryDump:
     """Parse an IAW 5AM binary (.bin) file.
 
@@ -463,15 +483,17 @@ def parse_binary(path: Path | str) -> BinaryDump:
     path = Path(path)
     raw = path.read_bytes()
 
-    checksum = hashlib.sha256(raw).hexdigest()
+    sha256 = hashlib.sha256(raw).hexdigest()
     identity = extract_identity(raw)
+    cal_csum = calculate_checksum(raw)
     axes, tables = scan_calibration_area(raw)
 
     return BinaryDump(
         source_path=str(path),
         file_size=len(raw),
-        checksum=checksum,
+        checksum=sha256,
         identity=identity,
+        cal_checksum=cal_csum,
         axes=axes,
         regions=tables,
         raw=raw,

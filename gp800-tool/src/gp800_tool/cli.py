@@ -171,6 +171,7 @@ def bindump(file, tables, axes):
     click.echo(f"Drawing:       {ident.drawing_number}")
     click.echo(f"Hardware:      {ident.hardware_id}")
     click.echo(f"Homologation:  {ident.homologation}")
+    click.echo(f"Cal Checksum:  0x{dump.cal_checksum:04X}")
     click.echo()
 
     if axes and dump.axes:
@@ -359,10 +360,20 @@ def txt2bin(txt_file, base_bin, output_bin):
         click.echo(click.style("No tables were patched.", fg="red"))
         sys.exit(1)
 
+    # Calculate checksums
+    from .binary_parser import calculate_checksum
+    original_csum = calculate_checksum(base_path.read_bytes())
+    patched_csum = calculate_checksum(bytes(raw))
+
     # Write output
     out_path = Path(output_bin)
     out_path.write_bytes(bytes(raw))
     click.echo(f"Written {out_path} ({len(raw):,} bytes, {patched_count} tables patched)")
+    click.echo(f"Checksum: 0x{original_csum:04X} -> 0x{patched_csum:04X}")
+    if original_csum != patched_csum:
+        click.echo(click.style(
+            f"  Checksum changed (expected — you modified calibration data)",
+            fg="yellow"))
 
 
 if __name__ == "__main__":
