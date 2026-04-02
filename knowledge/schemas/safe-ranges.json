@@ -5,11 +5,12 @@
   "last_updated": "2026-03-21",
   "parameters": {
     "fuel_map_value": {
-      "unit": "raw",
-      "hard_limits": { "min": 0, "max": 255 },
+      "unit": "us",
+      "storage": "16-bit LE",
+      "hard_limits": { "min": 0, "max": 15000 },
       "tuning_guidance": { "max_change_percent": 15 },
-      "flash_blockers": ["all_zero_row", "all_255_row"],
-      "notes": "TODO: Confirm 8-bit vs 16-bit from actual ECU dump"
+      "flash_blockers": ["all_zero_row", "all_max_row"],
+      "notes": "Confirmed 16-bit LE from GP800 original dump analysis (2026-04-02). Values are injection pulse width in microseconds. Typical range 500-8500 us."
     },
     "ignition_advance": {
       "unit": "deg_btdc",

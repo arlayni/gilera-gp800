@@ -1,6 +1,6 @@
 # GSD State — Gilera GP800
 
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-04-02 01:55 (post-compact)
 **Active Project:** ECU Recovery
 **Current Phase:** Phase 1 — Baseline
 **Current Task:** —

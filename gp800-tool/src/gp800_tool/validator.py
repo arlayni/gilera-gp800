@@ -1,6 +1,7 @@
 """Safety validation for IAW 5AM ECU map files."""
 from .models import MapFile, MapTable, ValidationResult
 from .schemas import get_hard_limit
+from .binary_parser import BinaryDump, IAW5AM_BIN_SIZE
 
 
 def validate_map_file(map_file: MapFile, safe_ranges: dict) -> list[ValidationResult]:
@@ -139,6 +140,75 @@ def _check_lambda_map(table: MapTable, ranges: dict) -> list[ValidationResult]:
             passed=True,
             check_name="lambda_map_check",
             message=f"OK: {table.name} passed all lambda safety checks",
+        ))
+
+    return results
+
+
+def validate_binary(dump: BinaryDump, safe_ranges: dict) -> list[ValidationResult]:
+    """Run safety checks on a parsed binary dump.
+
+    Checks:
+    - File size matches expected IAW 5AM size
+    - Named fuel tables: all-zero rows, all-max rows
+    - Idle RPM within range
+    """
+    results: list[ValidationResult] = []
+
+    # File size check
+    if dump.file_size != IAW5AM_BIN_SIZE:
+        results.append(ValidationResult(
+            passed=False,
+            check_name="file_size",
+            message=f"BLOCKER: File size {dump.file_size} != expected {IAW5AM_BIN_SIZE} bytes",
+            severity="BLOCKER",
+        ))
+
+    # Check named tables
+    for reg in dump.regions:
+        if reg.name.startswith("table_"):
+            continue  # Skip heuristic tables
+
+        if "fuel" in reg.name:
+            # All-zero row check
+            for r_idx, row in enumerate(reg.values):
+                if all(v == 0 for v in row):
+                    results.append(ValidationResult(
+                        passed=False,
+                        check_name="fuel_all_zero_row",
+                        message=f"BLOCKER: {reg.name} row {r_idx} is all-zero (lean seizure risk)",
+                        severity="BLOCKER",
+                    ))
+
+            # All-max row check (65535 for 16-bit)
+            for r_idx, row in enumerate(reg.values):
+                if all(v >= 65535 for v in row):
+                    results.append(ValidationResult(
+                        passed=False,
+                        check_name="fuel_all_max_row",
+                        message=f"BLOCKER: {reg.name} row {r_idx} is all-max (hydro-lock risk)",
+                        severity="BLOCKER",
+                    ))
+
+        if reg.name == "idle_rpm_target":
+            min_idle = get_hard_limit(safe_ranges, "idle_rpm", "min")
+            max_idle = get_hard_limit(safe_ranges, "idle_rpm", "max")
+            if min_idle and max_idle:
+                for r_idx, row in enumerate(reg.values):
+                    for c_idx, val in enumerate(row):
+                        if val < min_idle or val > max_idle:
+                            results.append(ValidationResult(
+                                passed=False,
+                                check_name="idle_rpm_range",
+                                message=f"WARNING: idle_rpm_target[{r_idx},{c_idx}] = {val} RPM outside [{min_idle}-{max_idle}]",
+                                severity="WARNING",
+                            ))
+
+    if not any(not r.passed for r in results):
+        results.append(ValidationResult(
+            passed=True,
+            check_name="binary_validation",
+            message="All binary safety checks passed",
         ))
 
     return results

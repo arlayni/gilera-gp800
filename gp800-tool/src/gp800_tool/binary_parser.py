@@ -3,6 +3,8 @@
 Reverse-engineered from comparing GP800 original (5AME0) and SRV850 (5AME2A)
 binaries. The IAW 5AM stores calibration data as 16-bit little-endian values
 in the upper portion of a 327,680-byte (320KB) flash image.
+
+Known table offsets discovered by comparing GP800 and SRV850 dumps.
 """
 import hashlib
 import struct
@@ -10,6 +12,48 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 IAW5AM_BIN_SIZE = 327680  # 320KB standard flash size
+
+# --- Known table definitions (reverse-engineered from real dumps) ---
+# Each entry: (name, data_offset, cols, rows, x_axis_offset, value_type)
+KNOWN_TABLES = [
+    {
+        "name": "fuel_injection",
+        "offset": 0x4D106,
+        "cols": 20,
+        "rows": 25,
+        "x_axis_offset": 0x49AA8,
+        "value_type": "fuel_us",
+        "description": "Main fuel injection pulse width (front cylinder)",
+    },
+    {
+        "name": "fuel_injection_rear",
+        "offset": 0x4D106 + 25 * 20 * 2,  # 0x4D8D6 area — rear follows front
+        "cols": 20,
+        "rows": 25,
+        "x_axis_offset": 0x49AA8,
+        "value_type": "fuel_us",
+        "description": "Main fuel injection pulse width (rear cylinder)",
+    },
+    {
+        "name": "idle_rpm_target",
+        "offset": None,  # Found by heuristic scan
+        "cols": None,
+        "rows": None,
+        "x_axis_offset": None,
+        "value_type": "rpm",
+        "description": "Target idle RPM vs temperature",
+    },
+]
+
+# Known axis positions
+KNOWN_AXES = {
+    "rpm_20": {"offset": 0x49AA8, "count": 20, "type": "RPM"},
+    "rpm_32": {"offset": 0x4CD8E, "count": 32, "type": "RPM"},
+    "rpm_16": {"offset": 0x4CDCE, "count": 16, "type": "RPM"},
+    "tps_12": {"offset": 0x4A510, "count": 12, "type": "TPS"},
+    "tps_17": {"offset": 0x4CEB2, "count": 17, "type": "TPS"},
+    "tps_9": {"offset": 0x4C5F2, "count": 9, "type": "TPS"},
+}
 
 
 @dataclass
@@ -178,21 +222,17 @@ def _classify_axis(values: list[int]) -> str:
     """Classify an axis based on its value range and pattern."""
     lo, hi = values[0], values[-1]
 
-    # RPM: 500-10000, typical breakpoints
+    # RPM: 400-1500 start, 3000-10000 end
     if 400 <= lo <= 1500 and 3000 <= hi <= 10000:
         return "RPM"
 
-    # TPS/load: 0-100 or 0-200 (percentage, sometimes x10)
-    if lo == 0 and 50 <= hi <= 200:
-        return "TPS"
-
-    # Temperature: -50 to +120 (signed)
-    if lo == 0 and 80 <= hi <= 130:
-        return "ECT"
-
-    # Voltage: common for injector dead-time (80-160 = 8.0-16.0V x10)
+    # Voltage: injector dead-time (60-100 start, 140-180 end, ×10)
     if 60 <= lo <= 100 and 140 <= hi <= 180:
         return "voltage"
+
+    # TPS/load: starts at 0, ends 50-200 (percentage or ×10)
+    if lo == 0 and 50 <= hi <= 200:
+        return "TPS"
 
     return ""
 
@@ -290,21 +330,128 @@ def find_idle_rpm_table(data: bytes, start: int = 0x4DE00,
     return None
 
 
+def _validate_axis_at_offset(data: bytes, offset: int, count: int,
+                              axis_type: str) -> bool:
+    """Check if data at offset looks like a valid axis of the expected type."""
+    if offset + count * 2 > len(data):
+        return False
+    vals = read_u16le(data, offset, count)
+    # Must be strictly monotonically increasing
+    if not all(vals[i] < vals[i + 1] for i in range(len(vals) - 1)):
+        return False
+    classified = _classify_axis(vals)
+    return classified == axis_type
+
+
+def find_known_tables(data: bytes) -> list[BinaryRegion]:
+    """Extract tables at known offsets (reverse-engineered from real dumps).
+
+    Uses hard-coded offsets discovered from GP800 binaries. Validates that
+    axis data at expected offsets is consistent before accepting a table.
+    Tables are skipped if the axis data doesn't match (e.g., different variant).
+    """
+    tables: list[BinaryRegion] = []
+
+    for tdef in KNOWN_TABLES:
+        if tdef["offset"] is None:
+            continue
+
+        offset = tdef["offset"]
+        cols = tdef["cols"]
+        rows = tdef["rows"]
+
+        if offset + rows * cols * 2 > len(data):
+            continue
+
+        # Validate the X axis first — if it doesn't look right,
+        # this variant probably uses different offsets
+        x_axis = None
+        if tdef["x_axis_offset"] is not None:
+            ax_off = tdef["x_axis_offset"]
+            for ax_name, ax_def in KNOWN_AXES.items():
+                if ax_def["offset"] == ax_off:
+                    if not _validate_axis_at_offset(data, ax_off,
+                                                     ax_def["count"],
+                                                     ax_def["type"]):
+                        break  # Axis doesn't match — skip this table
+                    ax_vals = read_u16le(data, ax_off, ax_def["count"])
+                    x_axis = AxisBreakpoints(
+                        offset=ax_off,
+                        values=ax_vals,
+                        axis_type=ax_def["type"],
+                    )
+                    break
+            else:
+                continue  # No matching axis definition found
+            if x_axis is None:
+                continue  # Axis validation failed
+
+        # Read the table data
+        values = []
+        for r in range(rows):
+            row_offset = offset + r * cols * 2
+            row = read_u16le(data, row_offset, cols)
+            values.append(row)
+
+        tables.append(BinaryRegion(
+            offset=offset,
+            name=tdef["name"],
+            rows=rows,
+            cols=cols,
+            values=values,
+            x_axis=x_axis,
+            value_type=tdef["value_type"],
+        ))
+
+    return tables
+
+
+def find_known_axes(data: bytes) -> list[AxisBreakpoints]:
+    """Read axes at known offsets."""
+    axes = []
+    for name, ax_def in KNOWN_AXES.items():
+        offset = ax_def["offset"]
+        count = ax_def["count"]
+        if offset + count * 2 > len(data):
+            continue
+        vals = read_u16le(data, offset, count)
+        axes.append(AxisBreakpoints(
+            offset=offset,
+            values=vals,
+            axis_type=ax_def["type"],
+        ))
+    return axes
+
+
 def scan_calibration_area(data: bytes) -> tuple[list[AxisBreakpoints], list[BinaryRegion]]:
-    """Scan the calibration area (upper portion) for tables and axes."""
-    # Calibration data lives roughly in 0x48000-0x50000
+    """Scan the calibration area for tables and axes.
+
+    Uses known offsets first, then falls back to heuristic detection
+    for tables not yet catalogued.
+    """
+    # 1. Known tables (high confidence)
+    known_tables = find_known_tables(data)
+    known_axes = find_known_axes(data)
+
+    # 2. Heuristic detection for additional tables
     cal_start = 0x48000
     cal_end = min(0x50000, len(data))
+    heuristic_axes = find_monotonic_axes(data, cal_start, cal_end, min_len=8)
 
-    axes = find_monotonic_axes(data, cal_start, cal_end, min_len=8)
-    tables = find_tables_near_axes(data, axes)
+    # Merge axes (known first, then heuristic ones at new offsets)
+    known_offsets = {a.offset for a in known_axes}
+    all_axes = list(known_axes)
+    for a in heuristic_axes:
+        if a.offset not in known_offsets:
+            all_axes.append(a)
 
-    # Find idle RPM table
+    # 3. Idle RPM table (heuristic)
     idle = find_idle_rpm_table(data)
+    all_tables = list(known_tables)
     if idle:
-        tables.append(idle)
+        all_tables.append(idle)
 
-    return axes, tables
+    return all_axes, all_tables
 
 
 def parse_binary(path: Path | str) -> BinaryDump:

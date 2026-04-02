@@ -183,7 +183,7 @@ def test_parse_real_original():
     assert dump.identity.hardware_id == "IAW5AMHW610"
     assert dump.identity.homologation.startswith("5AME0")
     assert len(dump.axes) > 10
-    assert len(dump.regions) > 5
+    assert len(dump.regions) >= 3  # fuel_injection, fuel_injection_rear, idle_rpm_target
 
 
 @pytest.mark.skipif(not VANDAAG_BIN.exists(), reason="Vandaag binary not available")

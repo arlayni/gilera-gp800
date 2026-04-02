@@ -50,16 +50,25 @@ def parse(file):
         click.echo()
 
 
+def _is_bin_file(path: str) -> bool:
+    return path.lower().endswith(".bin")
+
+
 @main.command()
 @click.argument("file", type=click.Path(exists=True))
 @click.option("--schemas", type=click.Path(exists=True), default=None)
 def validate(file, schemas):
-    """Run pre-flash safety validation on a map file."""
+    """Run pre-flash safety validation on a map file (.txt or .bin)."""
     schemas_dir = _resolve_schemas(schemas)
     ranges = load_safe_ranges(schemas_dir / "safe-ranges.json")
-    map_file = parse_txt_file(file)
 
-    results = validate_map_file(map_file, ranges)
+    if _is_bin_file(file):
+        from .validator import validate_binary
+        dump = parse_binary(file)
+        results = validate_binary(dump, ranges)
+    else:
+        map_file = parse_txt_file(file)
+        results = validate_map_file(map_file, ranges)
 
     blockers = [r for r in results if r.severity == "BLOCKER"]
     warnings = [r for r in results if r.severity == "WARNING"]
@@ -86,11 +95,17 @@ def validate(file, schemas):
 @click.argument("file", type=click.Path(exists=True))
 @click.option("--schemas", type=click.Path(exists=True), default=None)
 def quickcheck(file, schemas):
-    """Quick go/no-go assessment (GREEN/YELLOW/RED)."""
+    """Quick go/no-go assessment (GREEN/YELLOW/RED). Works on .txt and .bin."""
     schemas_dir = _resolve_schemas(schemas)
     ranges = load_safe_ranges(schemas_dir / "safe-ranges.json")
-    map_file = parse_txt_file(file)
-    results = validate_map_file(map_file, ranges)
+
+    if _is_bin_file(file):
+        from .validator import validate_binary
+        dump = parse_binary(file)
+        results = validate_binary(dump, ranges)
+    else:
+        map_file = parse_txt_file(file)
+        results = validate_map_file(map_file, ranges)
 
     blockers = [r for r in results if r.severity == "BLOCKER"]
     warnings = [r for r in results if r.severity == "WARNING"]
@@ -169,21 +184,34 @@ def bindump(file, tables, axes):
         click.echo()
 
     if tables and dump.regions:
-        click.echo(f"Detected {len(dump.regions)} calibration tables:")
-        for reg in dump.regions:
-            click.echo(f"  {reg.name}")
-            click.echo(f"    Offset: 0x{reg.offset:05X}  Size: {reg.rows}x{reg.cols}")
-            if reg.x_axis:
-                click.echo(f"    X-axis: {reg.x_axis.axis_type} [{reg.x_axis.values[0]}-{reg.x_axis.values[-1]}]")
-            flat = reg.flat_values()
-            click.echo(f"    Values: {min(flat)}-{max(flat)} (mean {sum(flat)/len(flat):.0f})")
-            # Print first 3 rows
-            for r in range(min(3, reg.rows)):
-                row_str = " ".join(f"{v:5d}" for v in reg.values[r])
-                click.echo(f"    row[{r:2d}]: {row_str}")
-            if reg.rows > 3:
-                click.echo(f"    ... ({reg.rows - 3} more rows)")
-            click.echo()
+        # Separate known (named) tables from heuristic discoveries
+        named = [r for r in dump.regions if not r.name.startswith("table_")]
+        heuristic = [r for r in dump.regions if r.name.startswith("table_")]
+
+        if named:
+            click.echo(f"Named calibration tables ({len(named)}):")
+            for reg in named:
+                type_label = f" [{reg.value_type}]" if reg.value_type else ""
+                click.echo(f"  {reg.name}{type_label}")
+                click.echo(f"    Offset: 0x{reg.offset:05X}  Size: {reg.rows}x{reg.cols}")
+                if reg.x_axis:
+                    click.echo(f"    X-axis: {reg.x_axis.axis_type} [{reg.x_axis.values[0]}-{reg.x_axis.values[-1]}] ({reg.x_axis.count} points)")
+                flat = reg.flat_values()
+                if flat:
+                    click.echo(f"    Values: {min(flat)}-{max(flat)} (mean {sum(flat)/len(flat):.0f})")
+                for r in range(min(3, reg.rows)):
+                    row_str = " ".join(f"{v:5d}" for v in reg.values[r])
+                    click.echo(f"    row[{r:2d}]: {row_str}")
+                if reg.rows > 3:
+                    click.echo(f"    ... ({reg.rows - 3} more rows)")
+                click.echo()
+
+        if heuristic:
+            click.echo(f"Additional detected tables ({len(heuristic)}):")
+            for reg in heuristic:
+                flat = reg.flat_values()
+                val_info = f"values {min(flat)}-{max(flat)}" if flat else ""
+                click.echo(f"  {reg.name}  {reg.rows}x{reg.cols}  {val_info}")
 
 
 @main.command()
@@ -223,6 +251,118 @@ def bindiff(file1, file2):
             click.echo(click.style(
                 f"  {d['field']}: {d['a']} -> {d['b']}", fg="yellow"))
     click.echo()
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True))
+@click.argument("output", type=click.Path())
+def bin2txt(file, output):
+    """Export named tables from a binary (.bin) dump to readable .txt format."""
+    dump = parse_binary(file)
+
+    if not dump.regions:
+        click.echo(click.style("No named tables found in binary.", fg="red"))
+        sys.exit(1)
+
+    named = [r for r in dump.regions if not r.name.startswith("table_")]
+    if not named:
+        click.echo(click.style("No named tables found (unknown variant?).", fg="red"))
+        sys.exit(1)
+
+    from .models import MapFile, MapTable
+
+    tables = {}
+    for reg in named:
+        x_label = "RPM"
+        x_vals = [float(v) for v in reg.x_axis.values] if reg.x_axis else [float(i) for i in range(reg.cols)]
+        y_label = "Load"
+        y_vals = [float(i) for i in range(reg.rows)]
+
+        tables[reg.name] = MapTable(
+            name=reg.name,
+            x_axis_label=x_label,
+            x_axis_values=x_vals,
+            y_axis_label=y_label,
+            y_axis_values=y_vals,
+            data=[[float(v) for v in row] for row in reg.values],
+            value_unit=reg.value_type.replace("fuel_us", "us").replace("degrees", "deg_btdc"),
+        )
+
+    mf = MapFile(source_path=str(file), tables=tables, checksum=dump.checksum)
+
+    from .exporter import export_txt_file
+    export_txt_file(mf, output)
+
+    click.echo(f"Exported {len(tables)} tables to {output}")
+    for name in tables:
+        t = tables[name]
+        click.echo(f"  {name}: {t.rows}x{t.cols}")
+
+
+@main.command()
+@click.argument("txt_file", type=click.Path(exists=True))
+@click.argument("base_bin", type=click.Path(exists=True))
+@click.argument("output_bin", type=click.Path())
+def txt2bin(txt_file, base_bin, output_bin):
+    """Write modified .txt table values back into a binary (.bin) file.
+
+    Takes a .txt file (from bin2txt), a base .bin to patch, and writes
+    the result to output_bin. The base binary is NOT modified.
+    """
+    from .binary_parser import KNOWN_TABLES, KNOWN_AXES, read_u16le
+    import struct
+
+    # Parse the txt file
+    map_file = parse_txt_file(txt_file)
+
+    # Read the base binary
+    base_path = Path(base_bin)
+    raw = bytearray(base_path.read_bytes())
+
+    if len(raw) != IAW5AM_BIN_SIZE:
+        click.echo(click.style(
+            f"WARNING: Base binary size {len(raw)} != expected {IAW5AM_BIN_SIZE}",
+            fg="yellow"))
+
+    patched_count = 0
+    for tdef in KNOWN_TABLES:
+        if tdef["offset"] is None:
+            continue
+
+        table_name = tdef["name"]
+        table = map_file.get_table(table_name)
+        if table is None:
+            continue
+
+        offset = tdef["offset"]
+        cols = tdef["cols"]
+        rows = tdef["rows"]
+
+        if table.rows != rows or table.cols != cols:
+            click.echo(click.style(
+                f"WARNING: {table_name} dimensions {table.rows}x{table.cols} "
+                f"don't match expected {rows}x{cols} — skipping",
+                fg="yellow"))
+            continue
+
+        # Write values back into binary
+        for r in range(rows):
+            for c in range(cols):
+                val = int(table.data[r][c])
+                byte_offset = offset + (r * cols + c) * 2
+                struct.pack_into("<H", raw, byte_offset, val)
+
+        patched_count += 1
+        click.echo(f"  Patched {table_name}: {rows}x{cols}")
+
+    if patched_count == 0:
+        click.echo(click.style("No tables were patched.", fg="red"))
+        sys.exit(1)
+
+    # Write output
+    out_path = Path(output_bin)
+    out_path.write_bytes(bytes(raw))
+    click.echo(f"Written {out_path} ({len(raw):,} bytes, {patched_count} tables patched)")
 
 
 if __name__ == "__main__":
