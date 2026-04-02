@@ -16,14 +16,19 @@
       },
       "expected": {
         "closed_throttle": {
-          "voltage": "0.5V",
-          "tolerance": "±0.1V"
+          "voltage": "0.7V",
+          "tolerance": "±0.1V",
+          "resistance_A_C": "2.5 kOhm"
         },
         "wide_open_throttle": {
-          "voltage": "4.5V",
-          "tolerance": "±0.2V"
+          "voltage": ">4.0V",
+          "tolerance": "±0.2V",
+          "resistance_A_C": "1.5 kOhm"
         },
-        "resistance_sweep": "1-5 kOhm",
+        "resistance_A_B": "1.1 kOhm",
+        "ecu_pins": {"A": 29, "B": 32, "C": 3},
+        "connector_colors": {"A": "Grey-Black", "B": "Brown-Yellow", "C": "Orange-Sky Blue"},
+        "source": "GP800 Workshop Manual INJEC-28/29",
         "response_smoothness": "linear, no dropouts"
       },
       "failure_modes": {
