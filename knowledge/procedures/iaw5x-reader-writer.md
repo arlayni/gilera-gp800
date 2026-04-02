@@ -12,12 +12,22 @@ The owner has IAW5xReader/Writer hardware and software. This is the primary tool
 
 ---
 
+## Available Tools
+
+| Tool | Source | Cost | Capabilities |
+|------|--------|------|-------------|
+| **IAWDiag suite** (IAW5xReader/Writer/EEPROM) | von-der-salierburg.de | Gratis | Read/write ECU binary, EEPROM, DTCs |
+| **5am_util** | github.com/denandz/5am_util | Gratis | Low-level IAW5AM read/write |
+| **GuzziDiag** | von-der-salierburg.de | Gratis | DTCs, beperkte live data |
+| **PADS** (Piaggio Advanced Diagnostic System) | Dealer portal | Dealer-only | Alles + TPS cal, immobilizer, CO adjust |
+| **OBDSTAR iScan Piaggio** | Commercieel | ~€300-500 | Dealer-level incl. key programming |
+
 ## Hardware Setup
 
 | Component | Notes |
 |-----------|-------|
-| IAW5x interface adapter | USB or serial adapter with K-Line interface |
-| Connection point | K-Line diagnostic connector on the bike (TODO: document location) |
+| USB-KKL adapter | **Moet FTDI chip hebben** — klonen zijn onbetrouwbaar |
+| 3-pin adapter kabel | Proprietary Piaggio/Aprilia connector (NIET standaard OBD2) |
 | Power | Bike must have ignition ON, engine OFF for most operations |
 | Battery | Must be >12.0V for flash operations |
 
