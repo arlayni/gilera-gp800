@@ -26,3 +26,5 @@ build/
 *.egg-info/
 UNKNOWN.egg-info/
 Iphone bestanden/
+CLAUDE.local.md
+planning/session-activity.log
