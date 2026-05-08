@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GP800 ECU</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0f;
+      --card: #1a1a1f;
+      --border: #2a2a32;
+      --accent: #f97316;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --radius: 16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    #conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 99px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    #conn-badge:active { opacity: 0.7; }
+    #conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background .3s;
+    }
+    #conn-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    #conn-dot.error { background: var(--red); }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      padding: 16px 20px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+
+    nav button {
+      flex-shrink: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    nav button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    main {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    section { display: none; }
+    section.active { display: flex; flex-direction: column; gap: 16px; }
+
+    /* --- Gauge grid --- */
+    .gauges {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .gauge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .gauge.wide {
+      grid-column: 1 / -1;
+    }
+
+    .gauge-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    .gauge-value {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      color: var(--text);
+      transition: color .3s;
+    }
+
+    .gauge-unit {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* RPM bar */
+    .rpm-bar-wrap {
+      margin-top: 10px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .rpm-bar {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--green);
+      width: 0%;
+      transition: width .5s ease, background .3s;
+    }
+
+    /* Lambda color states */
+    .lambda-rich { color: var(--red) !important; }
+    .lambda-ok   { color: var(--green) !important; }
+    .lambda-lean { color: var(--yellow) !important; }
+
+    /* --- Status card --- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .card h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .kv-list { display: flex; flex-direction: column; gap: 8px; }
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 14px;
+    }
+    .kv-key { color: var(--muted); }
+    .kv-val { font-weight: 600; }
+
+    /* --- DTC list --- */
+    .dtc-empty {
+      text-align: center;
+      color: var(--green);
+      font-weight: 600;
+      padding: 24px 0;
+    }
+
+    .dtc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .dtc-item:last-child { border-bottom: none; }
+    .dtc-code { font-weight: 700; font-family: "SF Mono", monospace; color: var(--red); }
+    .dtc-status { color: var(--muted); font-size: 12px; }
+
+    /* --- Buttons --- */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-muted { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn-accent { background: var(--accent); color: #fff; }
+
+    /* --- Log list --- */
+    .log-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-name { font-family: "SF Mono", monospace; color: var(--text); }
+    .log-size { color: var(--muted); }
+    .log-dl { color: var(--accent); font-weight: 600; text-decoration: none; }
+
+    /* --- Toast --- */
+    #toast {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom) + 24px);
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #fff;
+      color: #000;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 99px;
+      pointer-events: none;
+      transition: transform .3s ease;
+      z-index: 99;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>GP<span>800</span></h1>
+  <div id="conn-badge" onclick="toggleConnect()">
+    <div id="conn-dot"></div>
+    <span id="conn-label">Verbinden...</span>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('live', this)">Live</button>
+  <button onclick="showTab('dtc', this)">DTC</button>
+  <button onclick="showTab('info', this)">ECU Info</button>
+  <button onclick="showTab('logs', this)">Logs</button>
+</nav>
+
+<main>
+
+  <!-- LIVE -->
+  <section id="tab-live" class="active">
+    <div class="gauges">
+      <div class="gauge wide">
+        <div class="gauge-label">Toerental</div>
+        <div class="gauge-value" id="g-rpm">—</div>
+        <div class="gauge-unit">RPM</div>
+        <div class="rpm-bar-wrap"><div class="rpm-bar" id="rpm-bar"></div></div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-label">Gasklep</div>
+        <div class="gauge-value" id="g-tps">—</div>
+        <div class="gauge-unit">%</div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-label">Koelwater</div>
+        <div class="gauge-value" id="g-coolant">—</div>
+        <div class="gauge-unit">°C</div>
+      </div>
+      <div class="gauge wide">
+        <div class="gauge-label">Lambda</div>
+        <div class="gauge-value" id="g-lambda">—</div>
+        <div class="gauge-unit">λ</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="kv-list">
+        <div class="kv-row">
+          <span class="kv-key">Laatste update</span>
+          <span class="kv-val" id="last-update">—</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">Logging</span>
+          <span class="kv-val" id="log-status">actief</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DTC -->
+  <section id="tab-dtc">
+    <div class="card">
+      <h3>Foutcodes</h3>
+      <div id="dtc-list"><div class="dtc-empty">Laden...</div></div>
+    </div>
+    <button class="btn btn-muted" onclick="loadDtcs()">Vernieuwen</button>
+    <button class="btn btn-danger" onclick="clearDtcs()">Foutcodes wissen</button>
+  </section>
+
+  <!-- INFO -->
+  <section id="tab-info">
+    <div class="card">
+      <h3>ECU Identificatie</h3>
+      <div class="kv-list" id="ecu-info-list">
+        <div class="kv-row"><span class="kv-key">Laden...</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Verbinding</h3>
+      <div class="kv-list" id="conn-info-list"></div>
+    </div>
+  </section>
+
+  <!-- LOGS -->
+  <section id="tab-logs">
+    <div class="card">
+      <h3>Data logs</h3>
+      <div id="log-list"><div class="dtc-empty">Laden...</div></div>
+    </div>
+    <button class="btn btn-muted" onclick="loadLogs()">Vernieuwen</button>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+let sse = null;
+let connected = false;
+
+// ---------------------------------------------------------------------------
+// Tab navigation
+// ---------------------------------------------------------------------------
+function showTab(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+
+  if (id === 'dtc')  loadDtcs();
+  if (id === 'logs') loadLogs();
+  if (id === 'info') loadInfo();
+}
+
+// ---------------------------------------------------------------------------
+// Toast
+// ---------------------------------------------------------------------------
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ---------------------------------------------------------------------------
+// SSE live stream
+// ---------------------------------------------------------------------------
+function startSSE() {
+  if (sse) { sse.close(); sse = null; }
+  sse = new EventSource('/live/stream');
+  sse.onmessage = e => {
+    const d = JSON.parse(e.data);
+    updateGauges(d);
+  };
+  sse.onerror = () => {
+    setConnected(false);
+    setTimeout(startSSE, 3000);
+  };
+}
+
+function updateGauges(d) {
+  setConnected(true);
+
+  // RPM
+  const rpm = d.rpm ?? null;
+  document.getElementById('g-rpm').textContent = rpm !== null ? Math.round(rpm) : '—';
+  if (rpm !== null) {
+    const pct = Math.min(100, (rpm / 8500) * 100);
+    const bar = document.getElementById('rpm-bar');
+    bar.style.width = pct + '%';
+    bar.style.background = rpm > 7000 ? 'var(--red)' : rpm > 5000 ? 'var(--yellow)' : 'var(--green)';
+  }
+
+  // TPS
+  const tps = d.tps ?? null;
+  document.getElementById('g-tps').textContent = tps !== null ? tps.toFixed(1) : '—';
+
+  // Coolant
+  const cool = d.coolant ?? null;
+  const coolEl = document.getElementById('g-coolant');
+  coolEl.textContent = cool !== null ? Math.round(cool) : '—';
+  if (cool !== null) {
+    coolEl.style.color = cool > 105 ? 'var(--red)' : cool > 90 ? 'var(--yellow)' : '';
+  }
+
+  // Lambda
+  const lam = d.lambda ?? null;
+  const lamEl = document.getElementById('g-lambda');
+  lamEl.textContent = lam !== null ? lam.toFixed(2) : '—';
+  lamEl.className = 'gauge-value';
+  if (lam !== null) {
+    if (lam > 1.05) lamEl.classList.add('lambda-lean');
+    else if (lam < 0.85) lamEl.classList.add('lambda-rich');
+    else lamEl.classList.add('lambda-ok');
+  }
+
+  // Timestamp
+  const ts = d.ts ? new Date(d.ts * 1000).toLocaleTimeString('nl-NL') : '—';
+  document.getElementById('last-update').textContent = ts;
+}
+
+// ---------------------------------------------------------------------------
+// Connection
+// ---------------------------------------------------------------------------
+function setConnected(val) {
+  connected = val;
+  document.getElementById('conn-dot').className = val ? 'connected' : 'error';
+  document.getElementById('conn-label').textContent = val ? 'Verbonden' : 'Verbroken';
+}
+
+async function toggleConnect() {
+  if (connected) {
+    await fetch('/disconnect', { method: 'POST' });
+    if (sse) { sse.close(); sse = null; }
+    setConnected(false);
+    toast('Verbroken');
+  } else {
+    toast('Verbinden...');
+    const r = await fetch('/connect', { method: 'POST' });
+    if (r.ok) {
+      startSSE();
+      toast('Verbonden!');
+    } else {
+      const err = await r.json();
+      toast('Fout: ' + (err.detail || 'verbinding mislukt'));
+      setConnected(false);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DTC
+// ---------------------------------------------------------------------------
+async function loadDtcs() {
+  const el = document.getElementById('dtc-list');
+  el.innerHTML = '<div class="dtc-empty">Laden...</div>';
+  try {
+    const r = await fetch('/dtcs');
+    if (!r.ok) throw new Error(r.statusText);
+    const data = await r.json();
+    if (data.count === 0) {
+      el.innerHTML = '<div class="dtc-empty">✓ Geen foutcodes</div>';
+    } else {
+      el.innerHTML = data.dtcs.map(d => `
+        <div class="dtc-item">
+          <span class="dtc-code">${d.code}</span>
+          <span class="dtc-status">status: ${d.status}</span>
+        </div>`).join('');
+    }
+  } catch (e) {
+    el.innerHTML = '<div class="dtc-empty" style="color:var(--red)">Niet verbonden</div>';
+  }
+}
+
+async function clearDtcs() {
+  if (!confirm('Alle foutcodes wissen?')) return;
+  const r = await fetch('/dtcs', { method: 'DELETE' });
+  if (r.ok) {
+    toast('Foutcodes gewist');
+    loadDtcs();
+  } else {
+    toast('Wissen mislukt');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Info
+// ---------------------------------------------------------------------------
+async function loadInfo() {
+  try {
+    const r = await fetch('/status');
+    const data = await r.json();
+    const ecu = data.ecu || {};
+    document.getElementById('ecu-info-list').innerHTML = [
+      ['Software ID', ecu.software_id || '—'],
+      ['Hardware ID', ecu.hardware_id || '—'],
+      ['Homologatie', ecu.homologation || '—'],
+    ].map(([k, v]) => `
+      <div class="kv-row">
+        <span class="kv-key">${k}</span>
+        <span class="kv-val">${v}</span>
+      </div>`).join('');
+
+    document.getElementById('conn-info-list').innerHTML = [
+      ['Poort', ecu.port || data.port || '—'],
+      ['Status', data.connected ? '✓ Verbonden' : '✗ Verbroken'],
+    ].map(([k, v]) => `
+      <div class="kv-row">
+        <span class="kv-key">${k}</span>
+        <span class="kv-val">${v}</span>
+      </div>`).join('');
+  } catch (e) {
+    document.getElementById('ecu-info-list').innerHTML = '<div class="kv-row"><span class="kv-key" style="color:var(--red)">Niet bereikbaar</span></div>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Logs
+// ---------------------------------------------------------------------------
+async function loadLogs() {
+  const el = document.getElementById('log-list');
+  el.innerHTML = '<div class="dtc-empty">Laden...</div>';
+  try {
+    const r = await fetch('/logs');
+    const data = await r.json();
+    if (!data.files.length) {
+      el.innerHTML = '<div class="dtc-empty">Geen logs</div>';
+    } else {
+      el.innerHTML = data.files.map(f => `
+        <div class="log-item">
+          <div>
+            <div class="log-name">${f.name}</div>
+            <div class="log-size">${f.size_kb} KB</div>
+          </div>
+          <a class="log-dl" href="/logs/${f.name}" download>Download</a>
+        </div>`).join('');
+    }
+  } catch (e) {
+    el.innerHTML = '<div class="dtc-empty" style="color:var(--red)">Fout bij laden</div>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+(async () => {
+  try {
+    const r = await fetch('/status');
+    const data = await r.json();
+    if (data.connected) {
+      setConnected(true);
+      startSSE();
+    } else {
+      setConnected(false);
+      document.getElementById('conn-label').textContent = 'Verbroken';
+    }
+    if (data.ecu?.software_id) {
+      // Pre-fill info tab silently
+    }
+  } catch (e) {
+    setConnected(false);
+  }
+})();
+</script>
+</body>
+</html>
