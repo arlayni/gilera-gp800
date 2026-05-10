@@ -4,31 +4,23 @@
       "name": "Throttle Position Sensor",
       "type": "potentiometer",
       "wires": 3,
+      "verified": true,
+      "source": "GP800 Workshop Manual CHAR-10",
       "description": "Measures throttle plate angle for fuel mixture control",
       "test": {
         "method": "voltage sweep with throttle movement",
         "procedure": [
-          "Warm engine to operating temperature",
           "Ignition ON, engine OFF",
-          "Measure voltage at signal pin while moving throttle from fully closed to fully open",
-          "Verify linear response without dead spots or hesitation"
+          "Measure voltage between ECU pins 23 and 3 (engine-side wiring)",
+          "Sweep throttle from fully closed to fully open",
+          "Verify linear response 0.7V to >4.0V without dead spots"
         ]
       },
       "expected": {
-        "closed_throttle": {
-          "voltage": "0.7V",
-          "tolerance": "±0.1V",
-          "resistance_A_C": "2.5 kOhm"
-        },
-        "wide_open_throttle": {
-          "voltage": ">4.0V",
-          "tolerance": "±0.2V",
-          "resistance_A_C": "1.5 kOhm"
-        },
-        "resistance_A_B": "1.1 kOhm",
-        "ecu_pins": {"A": 29, "B": 32, "C": 3},
-        "connector_colors": {"A": "Grey-Black", "B": "Brown-Yellow", "C": "Orange-Sky Blue"},
-        "source": "GP800 Workshop Manual INJEC-28/29",
+        "closed_throttle_voltage": "0.7V",
+        "wide_open_throttle_voltage": ">4.0V",
+        "ecu_pins_signal": {"signal": 23, "ground": 3},
+        "ecu_pins_ground_insulation": [29, 32, 3],
         "response_smoothness": "linear, no dropouts"
       },
       "failure_modes": {
@@ -76,29 +68,27 @@
       "name": "Intake Air Temperature",
       "type": "NTC thermistor",
       "wires": 2,
+      "verified": true,
+      "source": "GP800 Workshop Manual CHAR-10",
       "description": "Measures incoming air temperature for density-based fuel correction",
       "test": {
         "method": "resistance measurement at known temperatures",
         "procedure": [
-          "Allow sensor to reach ambient room temperature (20°C/68°F)",
-          "Measure resistance with multimeter",
-          "Record reading (should be ~2500 ohm)",
-          "Place sensor in 80°C (176°F) hot water bath for 5 minutes",
-          "Measure resistance again (should be ~400 ohm)",
-          "Verify resistance decreases linearly as temperature increases"
+          "Disconnect IAT sensor connector",
+          "Measure resistance between sensor terminals at known ambient temperature",
+          "Compare to resistance table below"
         ]
       },
       "expected": {
-        "20_celsius": {
-          "resistance": "2500 ohm",
-          "tolerance": "±10%"
+        "resistance_table": {
+          "minus_10_celsius": "9600 ohm",
+          "0_celsius": "5900 ohm",
+          "plus_10_celsius": "3800 ohm",
+          "plus_20_celsius": "2500 ohm",
+          "plus_30_celsius": "1700 ohm"
         },
-        "80_celsius": {
-          "resistance": "400 ohm",
-          "tolerance": "±10%"
-        },
-        "temperature_curve": "negative temperature coefficient (NTC)",
-        "response_time": "fast response to air temperature changes"
+        "note": "Verified from WM. -30°C listed in manual is likely a typo for +30°C based on NTC curve.",
+        "temperature_curve": "negative temperature coefficient (NTC)"
       },
       "failure_modes": {
         "open_circuit": "maximum resistance, ECU assumes very cold air, over-rich mixture",
@@ -108,32 +98,30 @@
       }
     },
     "ect": {
-      "name": "Engine Coolant Temperature",
+      "name": "Engine Coolant Temperature / Engine Temperature Sensor",
       "type": "NTC thermistor",
       "wires": 2,
+      "verified": true,
+      "source": "GP800 Workshop Manual CHAR-11",
       "description": "Measures engine coolant temperature for cold-start enrichment and fan control",
       "test": {
         "method": "resistance measurement at known temperatures",
         "procedure": [
           "Allow engine to cool to ambient room temperature",
-          "Remove coolant hose and extract sensor (catch coolant)",
-          "Measure resistance at ambient temperature (20°C/68°F)",
-          "Place sensor in 90°C (194°F) hot water bath for 5 minutes",
-          "Measure resistance again",
-          "Reinstall sensor and top off coolant",
-          "Verify resistance readings match specifications"
+          "Disconnect sensor connector",
+          "Measure resistance between sensor terminals",
+          "Compare to resistance table below"
         ]
       },
       "expected": {
-        "20_celsius": {
-          "resistance": "2500 ohm",
-          "tolerance": "±10%"
+        "resistance_table": {
+          "0_celsius": "5900 ohm",
+          "plus_10_celsius": "3800 ohm",
+          "plus_20_celsius": "2500 ohm",
+          "plus_30_celsius": "1700 ohm",
+          "plus_80_celsius": "300 ohm"
         },
-        "90_celsius": {
-          "resistance": "300 ohm",
-          "tolerance": "±10%"
-        },
-        "operating_range": "0°C to 120°C linearly mapped",
+        "operating_range": "0°C to 120°C",
         "response_curve": "negative temperature coefficient (NTC)"
       },
       "failure_modes": {
@@ -144,9 +132,11 @@
       }
     },
     "ckp": {
-      "name": "Crankshaft Position",
+      "name": "Revolution / Crankshaft Position Sensor",
       "type": "VR inductive",
       "wires": 2,
+      "verified": true,
+      "source": "GP800 Workshop Manual CHAR-10",
       "description": "Inductive proximity sensor detecting crankshaft rotation for ignition timing and fuel injection sync",
       "test": {
         "method": "AC voltage measurement during cranking and running",
@@ -161,19 +151,9 @@
         ]
       },
       "expected": {
-        "dc_resistance": "200-400 ohm",
-        "cranking_voltage": {
-          "peak_ac": "200 mV minimum",
-          "description": "minimum signal voltage during engine cranking"
-        },
-        "running_voltage": {
-          "idle_1000_rpm": "1.0-2.0 V AC",
-          "high_rpm_5000": "3.0-5.0 V AC"
-        },
-        "air_gap": {
-          "distance": "0.5-1.5 mm",
-          "description": "sensor to reluctor wheel clearance"
-        },
+        "dc_resistance": "890 ohm ±10% (pins 35-25, engine-side wiring)",
+        "insulation": "pins 35-34 and 25-34 must be insulated from ground",
+        "ecu_pins": {"positive": 35, "negative": 25, "shield": 34},
         "signal_integrity": "clean sinusoidal waveform, no noise or drop-outs"
       },
       "failure_modes": {
@@ -428,6 +408,8 @@
       "name": "Idle Air Control Stepper Motor",
       "type": "4-wire bipolar stepper",
       "wires": 4,
+      "verified": true,
+      "source": "GP800 Workshop Manual CHAR-10",
       "description": "Stepper motor controlling idle air bypass valve to regulate engine idle speed and load compensation",
       "test": {
         "method": "resistance measurement and step response",
@@ -443,9 +425,11 @@
         ]
       },
       "expected": {
+        "resistance_pins_19_9": "~51 ohm",
+        "resistance_pins_18_17": "~51 ohm",
         "resistance_per_winding": {
-          "value": "40-60 ohm",
-          "description": "each of the 4 windings (A+/A-, B+/B-)"
+          "value": "~51 ohm",
+          "description": "verified from WM CHAR-10"
         },
         "pair_match": "opposite windings should be within ±5% of each other",
         "motor_response": "quiet, regular clicking during idle adjustment",

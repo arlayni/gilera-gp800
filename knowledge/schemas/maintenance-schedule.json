@@ -1,17 +1,49 @@
 {
-  "description": "GP800 maintenance schedule — verify against service manual",
-  "version": "1.0.0",
+  "description": "GP800 maintenance schedule — verified against GP800 i.e. Workshop Manual (Maintenance Table)",
+  "version": "2.0.0",
+  "status": "VERIFIED — source: GP800 Workshop Manual MAIN-2",
+  "legend": { "replace": "●", "check": "■", "2yr": "replace every two years" },
+  "valve_clearance_note": "Nominal 0.15 mm INT and EXH — restore only if deviation exceeds 0.05 mm",
   "intervals_km": {
-    "1000": ["oil_change", "general_inspection"],
-    "6000": ["oil_change", "oil_filter", "spark_plugs_inspect", "valve_clearance_inspect", "coolant_level", "brake_fluid_check"],
-    "12000": ["oil_change", "oil_filter", "spark_plugs_replace", "air_filter_replace", "cvt_belt_inspect", "variator_rollers_inspect", "final_drive_oil", "throttle_body_clean"],
-    "24000": ["oil_change", "oil_filter", "cvt_belt_replace", "variator_rollers_replace", "clutch_inspect", "coolant_replace", "brake_fluid_replace", "valve_clearance_adjust"],
-    "48000": ["all_24000_items", "cardan_shaft_inspect", "bevel_gear_bearings_inspect"]
+    "1000":  ["engine_oil_level_check"],
+    "5000":  ["engine_oil_replace", "oil_filter_replace", "engine_oil_level_check", "brake_pads_check", "tyre_pressure_check", "brake_fluid_level_check", "coolant_level_check", "electrical_battery_check", "throttle_control_check", "safety_locks_check", "steering_check", "suspensions_check", "road_test"],
+    "10000": ["engine_oil_replace", "oil_filter_replace", "spark_plugs_inspect", "cvt_air_filter_clean", "valve_clearance_check", "brake_pads_check", "tyre_pressure_check", "brake_fluid_level_check", "coolant_level_check", "electrical_battery_check"],
+    "20000": ["engine_oil_replace", "oil_filter_replace", "spark_plugs_replace", "cvt_belt_inspect", "variator_rollers_inspect", "slide_pads_inspect", "air_filter_replace", "throttle_body_clean", "final_drive_oil_check", "pinion_support_oil_check", "valve_clearance_check"],
+    "40000": ["engine_oil_replace", "oil_filter_replace", "cvt_belt_replace", "variator_rollers_replace", "slide_pads_replace", "clutch_inspect", "valve_clearance_adjust", "final_drive_oil_replace"],
+    "every_2_years": ["coolant_replace", "brake_fluid_replace"]
   },
   "fluids": {
-    "engine_oil": { "spec": "10W-40 JASO MA2", "capacity_with_filter_L": 3.5, "capacity_without_filter_L": 3.2 },
-    "coolant": { "spec": "50/50 ethylene glycol", "total_system_L": 2.25, "drain_refill_L": 1.6 },
-    "brake_fluid": { "spec": "DOT 4" },
-    "final_drive": { "spec": "SAE 80W-90 GL-5", "capacity_mL": 175, "notes": "verify from service manual" }
+    "engine_oil": {
+      "spec": "10W-40 JASO MA2",
+      "capacity_without_filter_L": 2.5,
+      "capacity_with_filter_L": 2.6,
+      "verified": true,
+      "source": "GP800 Workshop Manual Capacities table"
+    },
+    "coolant": {
+      "spec": "AGIP PERMANENT SPEZIAL or equivalent ethylene glycol",
+      "total_system_L": 2.4,
+      "verified": true,
+      "source": "GP800 Workshop Manual Capacities table"
+    },
+    "brake_fluid": { "spec": "DOT 4", "verified": false },
+    "final_drive": {
+      "spec": "SAE 80W-90 GL-5",
+      "capacity_mL": null,
+      "notes": "Capacity not found in workshop manual text — verify physically",
+      "verified": false
+    },
+    "fuel_tank": {
+      "total_L": 14.0,
+      "reserve_L": 1.8,
+      "verified": true,
+      "source": "GP800 Workshop Manual Capacities table"
+    }
+  },
+  "spark_plug": {
+    "type": "NGK CR7EKB",
+    "electrode_gap_mm": "0.7-0.9",
+    "verified": true,
+    "source": "GP800 Workshop Manual MAIN-4"
   }
 }
