@@ -67,19 +67,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  Core geinstalleerd" -ForegroundColor Green
 
-# --- Dashboard dependencies (stap 2: alleen pre-built wheels) ---
+# --- Dashboard dependencies (stap 2: exacte versies zonder compilatie) ---
 Write-Host ""
 Write-Host "Dashboard dependencies installeren..." -ForegroundColor Yellow
-& $pip install --only-binary :all: `
-    "pyserial>=3.5" `
-    "fastapi>=0.95,<0.100" `
-    "uvicorn>=0.29" `
-    "python-multipart>=0.0.9" `
-    "pydantic>=1.10,<2" -q
+& $pip install `
+    "pydantic==1.10.21" `
+    "fastapi==0.99.1" `
+    "uvicorn==0.23.2" `
+    "python-multipart==0.0.9" `
+    "pyserial>=3.5" -q
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  Dashboard installatie mislukt." -ForegroundColor Red
-    Write-Host "  Probeer handmatig: pip install pydantic==1.10.21 fastapi==0.99.1 uvicorn python-multipart pyserial" -ForegroundColor Yellow
 } else {
     Write-Host "  Dashboard geinstalleerd" -ForegroundColor Green
 }
@@ -104,8 +103,7 @@ Write-Host "  Gekopieerd naar: $dst" -ForegroundColor Green
 # --- Beschikbare COM poorten ---
 Write-Host ""
 Write-Host "=== Beschikbare COM poorten ===" -ForegroundColor Cyan
-Add-Type -AssemblyName System.IO.Ports
-$ports = [System.IO.Ports.SerialPort]::GetPortNames()
+$ports = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match "COM\d+" } | ForEach-Object { $_.Name }
 if ($ports) {
     foreach ($p in $ports) { Write-Host "  $p" -ForegroundColor Green }
 } else {
