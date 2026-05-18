@@ -67,20 +67,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  Core geinstalleerd" -ForegroundColor Green
 
-# --- Dashboard dependencies (stap 2: exacte versies zonder compilatie) ---
+# --- Dashboard dependencies (stap 2: 32-bit = Flask, 64-bit = FastAPI) ---
 Write-Host ""
-Write-Host "Dashboard dependencies installeren..." -ForegroundColor Yellow
-& $pip install `
-    "pydantic==1.10.21" `
-    "fastapi==0.99.1" `
-    "uvicorn==0.23.2" `
-    "python-multipart==0.0.9" `
-    "pyserial>=3.5" -q
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Dashboard installatie mislukt." -ForegroundColor Red
+if ($arch -eq "64") {
+    Write-Host "64-bit systeem — FastAPI installeren..." -ForegroundColor Yellow
+    & $pip install "fastapi>=0.110" "uvicorn[standard]>=0.29" "python-multipart>=0.0.9" "pyserial>=3.5" "flask>=2.0" -q
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  FastAPI mislukt, terugvallen op Flask..." -ForegroundColor Yellow
+        & $pip install "flask>=2.0" "python-multipart>=0.0.9" "pyserial>=3.5" -q
+    } else {
+        Write-Host "  FastAPI geinstalleerd (64-bit modus)" -ForegroundColor Green
+    }
 } else {
-    Write-Host "  Dashboard geinstalleerd" -ForegroundColor Green
+    Write-Host "32-bit systeem — Flask installeren..." -ForegroundColor Yellow
+    & $pip install "flask>=2.0" "python-multipart>=0.0.9" "pyserial>=3.5" -q
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Flask installatie mislukt!" -ForegroundColor Red
+    } else {
+        Write-Host "  Flask geinstalleerd (32-bit modus)" -ForegroundColor Green
+    }
 }
 
 $ver = & $tool --version 2>$null
