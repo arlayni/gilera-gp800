@@ -14,7 +14,7 @@ dependencies = [
 [project.optional-dependencies]
 kline = ["pyserial>=3.5"]
 viz = ["matplotlib>=3.5"]
-api = ["fastapi>=0.95,<0.100", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9", "pyserial>=3.5", "pydantic>=1.10,<2"]
+api = ["flask>=2.0", "python-multipart>=0.0.9", "pyserial>=3.5"]
 dev = ["pytest>=7.0", "pyserial>=3.5"]
 
 [project.scripts]
