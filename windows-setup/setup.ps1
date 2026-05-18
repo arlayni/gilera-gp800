@@ -56,19 +56,36 @@ if (-not (Test-Path $VENV_DIR)) {
 $pip  = Join-Path $VENV_DIR "Scripts\pip.exe"
 $tool = Join-Path $VENV_DIR "Scripts\gp800-tool.exe"
 
-# --- gp800-tool installeren ---
+# --- gp800-tool installeren (stap 1: core) ---
 Write-Host ""
 Write-Host "gp800-tool installeren..." -ForegroundColor Yellow
-& $pip install --only-binary :all: -e "$TOOL_DIR[api,kline]" -q
+& $pip install -e "$TOOL_DIR" -q
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Volledige installatie mislukt, installeren zonder dashboard..." -ForegroundColor Yellow
-    & $pip install -e "$TOOL_DIR[kline]" -q
-    Write-Host "  Geinstalleerd (zonder dashboard)" -ForegroundColor Yellow
-    Write-Host "  CLI commando's werken wel: validate, quickcheck, compare, dtc" -ForegroundColor Green
-} else {
-    $ver = & $tool --version
-    Write-Host "  Geinstalleerd: $ver" -ForegroundColor Green
+    Write-Host "  Installatie mislukt!" -ForegroundColor Red
+    Read-Host "Druk Enter om af te sluiten"
+    exit 1
 }
+Write-Host "  Core geinstalleerd" -ForegroundColor Green
+
+# --- Dashboard dependencies (stap 2: alleen pre-built wheels) ---
+Write-Host ""
+Write-Host "Dashboard dependencies installeren..." -ForegroundColor Yellow
+& $pip install --only-binary :all: `
+    "pyserial>=3.5" `
+    "fastapi>=0.95,<0.100" `
+    "uvicorn>=0.29" `
+    "python-multipart>=0.0.9" `
+    "pydantic>=1.10,<2" -q
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Dashboard installatie mislukt." -ForegroundColor Red
+    Write-Host "  Probeer handmatig: pip install pydantic==1.10.21 fastapi==0.99.1 uvicorn python-multipart pyserial" -ForegroundColor Yellow
+} else {
+    Write-Host "  Dashboard geinstalleerd" -ForegroundColor Green
+}
+
+$ver = & $tool --version 2>$null
+if ($ver) { Write-Host "  gp800-tool: $ver" -ForegroundColor Green }
 
 # --- Log directory ---
 Write-Host ""
