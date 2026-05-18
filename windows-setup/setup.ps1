@@ -59,9 +59,16 @@ $tool = Join-Path $VENV_DIR "Scripts\gp800-tool.exe"
 # --- gp800-tool installeren ---
 Write-Host ""
 Write-Host "gp800-tool installeren..." -ForegroundColor Yellow
-& $pip install -e "$TOOL_DIR[api,kline]" -q
-$ver = & $tool --version
-Write-Host "  Geinstalleerd: $ver" -ForegroundColor Green
+& $pip install --only-binary :all: -e "$TOOL_DIR[api,kline]" -q
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Volledige installatie mislukt, installeren zonder dashboard..." -ForegroundColor Yellow
+    & $pip install -e "$TOOL_DIR[kline]" -q
+    Write-Host "  Geinstalleerd (zonder dashboard)" -ForegroundColor Yellow
+    Write-Host "  CLI commando's werken wel: validate, quickcheck, compare, dtc" -ForegroundColor Green
+} else {
+    $ver = & $tool --version
+    Write-Host "  Geinstalleerd: $ver" -ForegroundColor Green
+}
 
 # --- Log directory ---
 Write-Host ""
