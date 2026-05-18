@@ -92,13 +92,15 @@ Write-Host "Log directory aanmaken..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force -Path $LOG_DIR | Out-Null
 Write-Host "  $LOG_DIR" -ForegroundColor Green
 
-# --- Startscript naar bureaublad kopiëren ---
+# --- Startscript naar bureaublad schrijven met absolute paden ---
 Write-Host ""
 Write-Host "Startscript naar bureaublad..." -ForegroundColor Yellow
-$src = Join-Path $PSScriptRoot "start-dashboard.bat"
 $dst = Join-Path $DESKTOP "GP800-Start.bat"
-Copy-Item $src $dst -Force
-Write-Host "  Gekopieerd naar: $dst" -ForegroundColor Green
+$toolExe = Join-Path $VENV_DIR "Scripts\gp800-tool.exe"
+$activateCmd = Join-Path $VENV_DIR "Scripts\activate.bat"
+$content = "@echo off`r`ntitle GP800 Dashboard`r`necho.`r`necho === GP800 Dashboard ===`r`necho Poort: COM3`r`necho.`r`nfor /f `"tokens=2 delims=:`" %%a in ('ipconfig ^| findstr /i `"IPv4`"') do (set IP=%%a & goto :found)`r`n:found`r`nset IP=%IP: =%`r`necho Open op iPhone: http://%IP%:8000`r`necho Stoppen: Ctrl+C`r`necho.`r`ncall `"$activateCmd`"`r`n`"$toolExe`" serve COM3`r`npause"
+Set-Content -Path $dst -Value $content -Encoding ASCII
+Write-Host "  Aangemaakt: $dst" -ForegroundColor Green
 
 # --- Beschikbare COM poorten ---
 Write-Host ""
