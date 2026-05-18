@@ -30,12 +30,23 @@ Replace CVT belt as part of pre-check if condition is suspect. See [mechanical-p
 
 ### Clutch Assessment
 
-| Check | Criteria |
-|-------|----------|
-| Engagement RPM | Should engage cleanly at ~3000 RPM |
-| Shoe/pad thickness | TODO: Minimum thickness from service manual |
-| Drum condition | No deep scoring |
-| Springs | Inspect for fatigue or breakage |
+*Verified against GP800 i.e. Workshop Manual p.ENG-7 t/m ENG-13*
+
+| Check | Criteria | Bron |
+|-------|----------|------|
+| Engagement RPM | Should engage cleanly at ~3000 RPM | |
+| Clutch mass friction min. thickness | 1 mm | Verified WM ENG-8 |
+| Clutch bell inside diameter max | 175.5 mm (std: 175 +0/+0.2 mm) | Verified WM ENG-7 |
+| Clutch bell eccentricity max | 0.2 mm | Verified WM ENG-7 |
+| Clutch spring standard length | 190.2 mm | Verified WM ENG-12 |
+| Clutch spring min. length (worn) | 182 mm | Verified WM ENG-12 |
+| Driven pulley bushing OD min | 54.91 mm (std: 55.00 -0.015/-0.035) | Verified WM ENG-10 |
+| Driven pulley bushing ID max | 55.05 mm (std: 55.00 +0.035/0.00) | Verified WM ENG-10 |
+| Clutch ring nut torque | 65–75 Nm | Verified WM ENG-13 |
+| Drive pulley nut torque | 252–278 Nm | Verified WM Torque table |
+| Driven pulley nut torque | 153–187 Nm | Verified WM Torque table |
+| Clutch removal tool | 020659Y | Verified WM ENG-7 |
+| Driven pulley grease | AGIP GREASE SM 2 (~10g) | Verified WM ENG-12 |
 
 ---
 

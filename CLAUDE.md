@@ -75,7 +75,44 @@ Stock eerst, conservatieve wijzigingen (max 5% per stap).
 - **Communicatie:** K-Line ISO 9141-2 @ 10.4 kbaud (NIET standaard OBD2)
 - **Immobilizer:** REDACTED — codes nooit in output
 
-## 5. Hoe we werken
+## 5. Remote Tuning via Raspberry Pi
+
+### Setup (eenmalig)
+```bash
+# Laptop configureren (SSH key + alias):
+./pi-setup/laptop-setup.sh raspberrypi.local pi
+```
+
+### Tuning sessie commando's (Claude voert dit uit via Bash)
+```bash
+# Sessie starten op Pi
+ssh gp800-pi './tune-session.sh start'
+
+# Live data streamen
+ssh gp800-pi './tune-session.sh log'
+
+# ECU map ophalen
+ssh gp800-pi './tune-session.sh read'
+scp gp800-pi:/tmp/current.bin map-files/working/current.bin
+
+# Map terugzetten na aanpassing
+scp map-files/working/proposed.bin gp800-pi:/tmp/proposed.bin
+ssh gp800-pi './tune-session.sh flash /tmp/proposed.bin'
+
+# DTC uitlezen / wissen
+ssh gp800-pi './tune-session.sh dtc'
+ssh gp800-pi './tune-session.sh clear-dtc'
+```
+
+### SSH alias
+`gp800-pi` verwijst naar de Pi (ingesteld door laptop-setup.sh).
+Onderweg via Tailscale: verander HostName in `~/.ssh/config` naar Tailscale IP.
+
+Volledige workflow: `planning/remote-tuning-workflow.md`
+
+---
+
+## 6. Hoe we werken
 
 ### Architectuur
 ```

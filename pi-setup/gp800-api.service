@@ -1,0 +1,23 @@
+[Unit]
+Description=GP800 ECU API Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__REPO_DIR__
+ExecStart=__REPO_DIR__/pi-setup/run.sh
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+Environment=GP800_PORT=__SERIAL_PORT__
+Environment=GP800_LOG_DIR=__LOG_DIR__
+
+# Seriële poort toegang
+SupplementaryGroups=dialout
+
+[Install]
+WantedBy=multi-user.target

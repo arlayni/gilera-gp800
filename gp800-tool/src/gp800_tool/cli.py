@@ -769,5 +769,37 @@ def sniff(port, output, duration):
     click.echo("Analyze with: grep '31' capture.txt  (find RoutineControl commands)")
 
 
+@main.command()
+@click.argument("port", type=str)
+@click.option("--host", default="0.0.0.0", show_default=True, help="Bind address")
+@click.option("--api-port", default=8000, show_default=True, help="HTTP port")
+@click.option("--log-dir", type=click.Path(), default=None,
+              help="Directory voor JSONL data logs (default: ~/gp800-logs)")
+def serve(port, host, api_port, log_dir):
+    """Start de FastAPI server voor Raspberry Pi / iPhone dashboard.
+
+    PORT is de seriële poort van de USB-KKL adapter (bv. /dev/ttyUSB0).
+
+    Open op iPhone via Tailscale: http://<pi-ip>:8000
+    """
+    try:
+        from .api import serve as _serve
+    except ImportError:
+        click.echo(click.style(
+            "ERROR: fastapi en uvicorn vereist. Installeer met:\n"
+            "  pip install 'gp800-tool[api]'",
+            fg="red"))
+        sys.exit(1)
+
+    from pathlib import Path as _Path
+    log_path = _Path(log_dir) if log_dir else None
+
+    click.echo(click.style(f"GP800 API starten op {host}:{api_port} (poort: {port})", fg="green"))
+    click.echo(f"  Dashboard: http://{host}:{api_port}/")
+    click.echo(f"  API docs:  http://{host}:{api_port}/docs")
+    click.echo()
+    _serve(port, host=host, api_port=api_port, log_dir=log_path)
+
+
 if __name__ == "__main__":
     main()
