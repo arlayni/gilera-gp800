@@ -29,14 +29,14 @@ foreach ($cmd in @("python", "python3", "py")) {
 
 if (-not $python) {
     Write-Host "Python 3.10+ niet gevonden!" -ForegroundColor Red
-    Write-Host "Installeer Python van python.org en vink 'Add Python to PATH' aan."
+    Write-Host "Installeer Python van python.org en vink Add Python to PATH aan."
     Read-Host "Druk Enter om af te sluiten"
     exit 1
 }
 
-# --- 32-bit check ---
+# --- 32-bit of 64-bit ---
 $arch = & $python -c "import struct; print(struct.calcsize('P') * 8)"
-Write-Host "  Architectuur: $arch-bit"
+Write-Host "  Architectuur: $arch bit"
 
 # --- Pip bijwerken ---
 Write-Host ""
@@ -56,7 +56,7 @@ if (-not (Test-Path $VENV_DIR)) {
 $pip  = Join-Path $VENV_DIR "Scripts\pip.exe"
 $tool = Join-Path $VENV_DIR "Scripts\gp800-tool.exe"
 
-# --- gp800-tool installeren (stap 1: core) ---
+# --- gp800-tool core installeren ---
 Write-Host ""
 Write-Host "gp800-tool installeren..." -ForegroundColor Yellow
 & $pip install -e "$TOOL_DIR" -q
@@ -67,24 +67,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  Core geinstalleerd" -ForegroundColor Green
 
-# --- Dashboard dependencies (stap 2: 32-bit = Flask, 64-bit = FastAPI) ---
+# --- Dashboard dependencies ---
 Write-Host ""
 if ($arch -eq "64") {
-    Write-Host "64-bit systeem — FastAPI installeren..." -ForegroundColor Yellow
+    Write-Host "64-bit systeem - FastAPI installeren..." -ForegroundColor Yellow
     & $pip install "fastapi>=0.110" "uvicorn[standard]>=0.29" "python-multipart>=0.0.9" "pyserial>=3.5" "flask>=2.0" -q
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  FastAPI mislukt, terugvallen op Flask..." -ForegroundColor Yellow
         & $pip install "flask>=2.0" "python-multipart>=0.0.9" "pyserial>=3.5" -q
+        Write-Host "  Flask geinstalleerd" -ForegroundColor Green
     } else {
-        Write-Host "  FastAPI geinstalleerd (64-bit modus)" -ForegroundColor Green
+        Write-Host "  FastAPI geinstalleerd" -ForegroundColor Green
     }
 } else {
-    Write-Host "32-bit systeem — Flask installeren..." -ForegroundColor Yellow
+    Write-Host "32-bit systeem - Flask installeren..." -ForegroundColor Yellow
     & $pip install "flask>=2.0" "python-multipart>=0.0.9" "pyserial>=3.5" -q
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  Flask installatie mislukt!" -ForegroundColor Red
     } else {
-        Write-Host "  Flask geinstalleerd (32-bit modus)" -ForegroundColor Green
+        Write-Host "  Flask geinstalleerd" -ForegroundColor Green
     }
 }
 
@@ -97,7 +98,7 @@ Write-Host "Log directory aanmaken..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force -Path $LOG_DIR | Out-Null
 Write-Host "  $LOG_DIR" -ForegroundColor Green
 
-# --- Startscript naar bureaublad schrijven met absolute paden ---
+# --- Startscript op bureaublad ---
 Write-Host ""
 Write-Host "Startscript naar bureaublad..." -ForegroundColor Yellow
 $dst = Join-Path $DESKTOP "GP800-Start.bat"
@@ -107,7 +108,7 @@ $content = "@echo off`r`ntitle GP800 Dashboard`r`necho.`r`necho === GP800 Dashbo
 Set-Content -Path $dst -Value $content -Encoding ASCII
 Write-Host "  Aangemaakt: $dst" -ForegroundColor Green
 
-# --- Beschikbare COM poorten ---
+# --- COM poorten ---
 Write-Host ""
 Write-Host "=== Beschikbare COM poorten ===" -ForegroundColor Cyan
 $ports = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match "COM\d+" } | ForEach-Object { $_.Name }
@@ -123,7 +124,7 @@ Write-Host ""
 Write-Host "Volgende stappen:" -ForegroundColor Yellow
 Write-Host "  1. Sluit USB-KKL adapter aan op laptop"
 Write-Host "  2. Open Apparaatbeheer, kijk bij Poorten welk COM nummer"
-Write-Host "  3. Pas het COM nummer aan in GP800-Start.bat op je bureaublad"
+Write-Host "  3. Pas COM nummer aan in GP800-Start.bat op bureaublad"
 Write-Host "  4. Dubbelklik GP800-Start.bat"
 Write-Host ""
 Read-Host "Druk Enter om af te sluiten"
