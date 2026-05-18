@@ -1,25 +1,19 @@
 # Current Bike State & Active Symptoms
 
-**Date:** 2026-03-21
-**Safety Status:** DO NOT RIDE — Severity 5 Fire Risk
+**Date:** 2026-05-18
+**Safety Status:** CAUTION — Severity 2 (warm idle stall, niet rijklaar)
 
 ## Engine Running Symptoms
 
-### Idle & Start Behavior
-- **Rough idle** with noticeable vibration and instability
-- **Stalling after start** — engine dies within seconds of cold start
-- **Stalling at traffic lights** — cannot maintain idle at stops
-- **Difficulty restarting** after stall
+### Huidige symptomen (2026-05-18)
+- **Warm stationair uitvallen** — motor valt uit bij stationair draaien wanneer warm
+- **Gas geven bij afremmen vereist** — zonder gas geven valt motor uit bij afremmen
+- Koud starten en draaien werkt normaal
 
-### Load & Throttle Response
-- **Power loss at full throttle** after ~2 minutes of sustained acceleration
-- Symptoms suggest fuel mixture issue or ignition cut-off
-- Cannot reach redline without power cut
-
-### Exhaust & Fuel Mixture Indicators
-- **Red-hot muffler** visible during operation
-- **Flames from exhaust** observed when idling at home
-- These symptoms are classic indicators of **excessively rich fuel mixture** (running too much fuel, not enough air)
+### Opgeloste symptomen
+- ~~Roodgloeiende uitlaat~~ — opgelost
+- ~~Vlammen uit uitlaat~~ — opgelost
+- ~~Stalling direct na koud starten~~ — opgelost
 
 ## ECU & Map Status
 
@@ -51,10 +45,14 @@
 - Cannot control idle or throttle reliably
 - Not fit for any riding until resolved
 
-## Next Steps
+## Volgende stappen
 
-1. Obtain baseline ECU maps for SRV850 (Aprilia OEM or Gilera GP800 equivalent)
-2. Perform baseline measurements to verify sensors are reading correctly
-3. Flash correct maps to ECU
-4. Test idle and light throttle operation before any load testing
-5. Verify all wiring from SRV850 installation is correct (see `srv850-to-gp800-wiring.md`)
+1. **Huidige ECU map uitlezen** via `gp800-tool read COM3` en opslaan als nieuwe baseline
+2. **DTC's uitlezen** — zoek Code 32 (ISC), 11 (ECT), 14 (TPS)
+3. **Live data loggen** bij warm stationair — RPM, lambda, TPS analyseren
+4. **Warm idle cellen finetunen** met Claude op basis van live lambda data
+
+## Notities map bestanden
+- `map-files/working/vandaaggp800.bin` — VEROUDERD, niet gebruiken
+- `map-files/original/Gilera_GP800_original.bin` — stock GP800 referentie (niet van deze motor)
+- Nieuwe baseline wordt volgende sessie uitgelezen en opgeslagen
